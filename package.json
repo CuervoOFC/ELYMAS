@@ -1,17 +1,40 @@
 {
-  "name": "",
+  "name": "elymas-bot",
   "version": "1.0.0",
-  "description": "Bot de WhatsApp modular con sistema de subbots editables (creado por cuervo-team-supreme)",
+  "description": "Bot de WhatsApp modular con sistema de subbots editables (Creado por Cuervo-Team-Supreme)",
   "type": "module",
   "main": "index.js",
+  "author": "Cuervo-Team-Supreme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CuervoOFC/ELYMAS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CuervoOFC/ELYMAS/issues"
+  },
+  "homepage": "https://github.com/CuervoOFC/ELYMAS",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "update": "git pull",
+    "update:hard": "git fetch origin && git reset --hard origin/main",
+    "status": "git status",
+    "log": "git log --oneline -10",
+    "branch": "git branch",
+    "fetch": "git fetch",
+    "pull": "git pull",
+    "push": "git push",
+    "commit": "git add . && git commit",
+    "restart": "node index.js"
   },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@itsliaaa/baileys": "latest",
-    "pino": "^9.7.0",
-    "node-cache": "*"
+    "node-cache": "*",
+    "pino": "^9.7.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
