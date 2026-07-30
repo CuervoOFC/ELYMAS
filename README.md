@@ -33,7 +33,6 @@ Cuenta con un sistema completo de administración, descargas multimedia, subbots
 - 📷 Instagram
 - 👍 Facebook
 - 📌 Pinterest
-- 🎞 Threads
 - 🌐 Descarga mediante URL
 
 ---
@@ -44,8 +43,7 @@ Cada SubBot funciona de forma independiente.
 
 ### Incluye
 
-- Código de Vinculación
-- QR de Vinculación
+- Codigo de Vinculación
 - Sesiones independientes
 - Configuración individual
 - Reinicio independiente
@@ -92,7 +90,7 @@ plugins/
 ## Clonar
 
 ```bash
-git clone https://github.com/TU-USUARIO/ElyMasBot.git
+git clone https://github.com/CuervoOFC/ELYMAS.git
 ```
 
 Entrar
@@ -153,12 +151,9 @@ npm run dev
 .
 ├── plugins
 ├── lib
-├── src
 ├── database
 ├── sessions
-├── CuervoSessions
-├── media
-├── tmp
+├── subbots
 ├── package.json
 └── index.js
 ```
@@ -173,18 +168,13 @@ npm run dev
 - Instagram
 - Facebook
 - Pinterest
-- Threads
-- Twitter/X
 - MediaFire
-- Google Drive
 
 ---
 
 # 🔒 Funciones
 
-- Sistema AntiSpam
 - AntiLink
-- AntiFake
 - Bienvenidas
 - Despedidas
 - Moderación
