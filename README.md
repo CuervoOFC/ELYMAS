@@ -1053,6 +1053,14 @@ Cada actualización representa horas de trabajo y dedicación para mejorar el pr
 
 # 🙏 Agradecimientos
 
+---
+
+<p align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=140&color=0:00BFFF,100:8A2BE2&section=footer"/>
+
+</p>
+
 Gracias a todas las personas que utilizan ElyMas Bot.
 
 Gracias por:
