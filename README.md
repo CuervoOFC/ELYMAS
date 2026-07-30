@@ -510,3 +510,389 @@ plugins/
 | Alto Rendimiento | ✅ |
 
 ---
+
+<!-- ========================================================= -->
+<!--               INSTALACIÓN Y CONFIGURACIÓN                 -->
+<!-- ========================================================= -->
+
+# 🚀 Instalación
+
+ElyMas Bot puede ejecutarse en distintos sistemas operativos y plataformas de alojamiento.
+
+Actualmente es compatible con:
+
+| Plataforma | Compatibilidad |
+|------------|:--------------:|
+| 🐧 Linux | ✅ |
+| 🪟 Windows | ✅ |
+| 📱 Termux | ✅ |
+| ☁️ VPS | ✅ |
+| 🎮 Pterodactyl | ✅ |
+| 🍎 macOS | ✅ |
+
+---
+
+# 📦 Requisitos
+
+Antes de comenzar asegúrate de tener instalado:
+
+| Programa | Versión |
+|----------|:-------:|
+| Node.js | 18 o superior |
+| npm | Última versión |
+| Git | Recomendado |
+| FFmpeg | Requerido |
+| ImageMagick | Recomendado |
+
+---
+
+# 📥 Clonar el repositorio
+
+```bash
+git clone https://github.com/CuervoOFC/ELYMAS.git
+```
+
+Entrar al proyecto
+
+```bash
+cd ELYMAS
+```
+
+---
+
+# 📦 Instalar dependencias
+
+```bash
+npm install
+```
+
+o
+
+```bash
+npm i
+```
+
+---
+
+# ▶️ Ejecutar el Bot
+
+Modo normal
+
+```bash
+npm start
+```
+
+Modo desarrollo
+
+```bash
+npm run dev
+```
+
+---
+
+# 🐧 Instalación en Linux
+
+Actualizar paquetes
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+Instalar dependencias
+
+```bash
+sudo apt install git ffmpeg imagemagick -y
+```
+
+Instalar Node.js
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install nodejs -y
+```
+
+Clonar
+
+```bash
+git clone https://github.com/CuervoOFC/ELYMAS.git
+```
+
+Entrar
+
+```bash
+cd ELYMAS
+```
+
+Instalar
+
+```bash
+npm install
+```
+
+Ejecutar
+
+```bash
+npm start
+```
+
+---
+
+# 📱 Instalación en Termux
+
+Actualizar
+
+```bash
+pkg update -y && pkg upgrade -y
+```
+
+Instalar paquetes
+
+```bash
+pkg install nodejs git ffmpeg imagemagick -y
+```
+
+Clonar
+
+```bash
+git clone https://github.com/CuervoOFC/ELYMAS.git
+```
+
+Entrar
+
+```bash
+cd ELYMAS
+```
+
+Instalar
+
+```bash
+npm install
+```
+
+Ejecutar
+
+```bash
+npm start
+```
+
+---
+
+# ☁️ Instalación en VPS
+
+Actualizar servidor
+
+```bash
+apt update && apt upgrade -y
+```
+
+Instalar dependencias
+
+```bash
+apt install git ffmpeg imagemagick -y
+```
+
+Instalar Node.js
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt install nodejs -y
+```
+
+Clonar
+
+```bash
+git clone https://github.com/CuervoOFC/ELYMAS.git
+```
+
+Entrar
+
+```bash
+cd ELYMAS
+```
+
+Instalar dependencias
+
+```bash
+npm install
+```
+
+Iniciar
+
+```bash
+npm start
+```
+
+---
+
+# 🎮 Instalación en Pterodactyl
+
+### Startup
+
+```bash
+npm start
+```
+
+### Variables
+
+```text
+AUTO_UPDATE=false
+NODE_ENV=production
+```
+
+### Node.js
+
+```
+18+
+```
+
+---
+
+# 🪟 Instalación en Windows
+
+1. Instalar Node.js.
+2. Instalar Git.
+3. Descargar el proyecto.
+4. Abrir CMD o PowerShell.
+
+```bash
+git clone https://github.com/CuervoOFC/ELYMAS.git
+```
+
+```bash
+cd ELYMAS
+```
+
+```bash
+npm install
+```
+
+```bash
+npm start
+```
+
+---
+
+# 🔑 Vinculación
+
+ElyMas Bot soporta:
+
+| Método | Disponible |
+|---------|:----------:|
+| Código de Vinculación | ✅ |
+| Reconexión Automática | ✅ |
+| Multi Sesión | ✅ |
+| SubBots | ✅ |
+
+---
+
+# 📂 Estructura del Proyecto
+
+```text
+ELYMAS/
+
+├── database/
+│
+├── lib/
+│
+├── plugins/
+│
+├── sessions/
+│
+├── subbots/
+│
+├── tmp/
+│
+├── views/
+│
+├── package.json
+│
+├── config.js
+│
+├── handler.js
+│
+├── index.js
+│
+└── README.md
+```
+
+---
+
+# 📁 Directorio Plugins
+
+```text
+plugins/
+
+├── ai/
+├── anime/
+├── audio/
+├── convert/
+├── downloads/
+├── economy/
+├── fun/
+├── games/
+├── group/
+├── image/
+├── information/
+├── internet/
+├── nsfw/
+├── owner/
+├── search/
+├── sticker/
+├── storage/
+├── subbots/
+├── tools/
+└── utils/
+```
+
+---
+
+# ⚙️ Tecnologías Utilizadas
+
+| Tecnología | Uso |
+|------------|-----|
+| Node.js | Entorno de ejecución |
+| JavaScript | Lenguaje principal |
+| @itsliaaa/baileys | WhatsApp API |
+| Axios | Solicitudes HTTP |
+| Node Fetch | APIs |
+| FFmpeg | Audio y Video |
+| ImageMagick | Imágenes |
+| JSON | Base de Datos |
+
+---
+
+# 📊 Compatibilidad
+
+| Sistema | Estado |
+|---------|:------:|
+| WhatsApp | ✅ |
+| Android | ✅ |
+| Linux | ✅ |
+| Windows | ✅ |
+| macOS | ✅ |
+| VPS | ✅ |
+| Pterodactyl | ✅ |
+| Termux | ✅ |
+
+---
+
+# 💡 Recomendaciones
+
+> Para obtener el mejor rendimiento se recomienda:
+
+- ✅ Node.js 20 o superior.
+- ✅ FFmpeg actualizado.
+- ✅ ImageMagick instalado.
+- ✅ Ejecutar en Linux o VPS.
+- ✅ Mantener las dependencias actualizadas.
+- ✅ Utilizar la última versión de **@itsliaaa/baileys**.
+
+---
+
+<div align="center">
+
+## ⚡ Instalación sencilla, rápida y preparada para producción.
+
+</div>
+
+---
