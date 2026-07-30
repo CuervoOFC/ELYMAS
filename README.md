@@ -386,11 +386,6 @@ Cada SubBot puede modificar completamente su identidad.
 - 👤 Nombre del Owner
 - ☎ Número del Owner
 - 🖼 Imagen del Bot
-- 📷 Foto de Perfil
-- 📝 Descripción
-- 🌎 Configuración General
-- 🎨 Personalización del Menú
-- ⚙ Configuración de Plugins
 
 ---
 
@@ -402,16 +397,12 @@ subbots/
 ├── 521XXXXXXXXXX/
 │   ├── creds.json
 │   ├── config.json
-│   ├── database.json
-│   ├── plugins/
-│   └── media/
+│   └── database.json
 │
 ├── 573XXXXXXXXXX/
 │   ├── creds.json
 │   ├── config.json
-│   ├── database.json
-│   ├── plugins/
-│   └── media/
+│   └── database.json
 │
 └── ...
 ```
@@ -424,11 +415,9 @@ Cada SubBot almacena:
 
 - Su propia sesión.
 - Su propia base de datos.
-- Sus propios plugins.
 - Su propio menú.
 - Su propio Owner.
 - Su propia imagen.
-- Sus propios archivos multimedia.
 - Su configuración personalizada.
 
 ---
@@ -462,32 +451,21 @@ Los comandos están organizados por categorías para facilitar el mantenimiento 
 plugins/
 
 ├── ai/
-├── anime/
-├── audio/
-├── convert/
 ├── downloads/
 ├── economy/
-├── fun/
-├── games/
 ├── group/
 ├── image/
-├── information/
-├── internet/
 ├── nsfw/
 ├── owner/
 ├── search/
 ├── sticker/
-├── storage/
-├── subbots/
-├── tools/
-└── utils/
+└── subbots/
 ```
 
 ---
 
 ## 📦 Ventajas
 
-- Plugins independientes.
 - Fácil mantenimiento.
 - Mayor rendimiento.
 - Organización por categorías.
@@ -800,10 +778,6 @@ ELYMAS/
 │
 ├── subbots/
 │
-├── tmp/
-│
-├── views/
-│
 ├── package.json
 │
 ├── config.js
@@ -823,25 +797,14 @@ ELYMAS/
 plugins/
 
 ├── ai/
-├── anime/
-├── audio/
-├── convert/
 ├── downloads/
 ├── economy/
-├── fun/
-├── games/
 ├── group/
-├── image/
-├── information/
-├── internet/
 ├── nsfw/
 ├── owner/
 ├── search/
 ├── sticker/
-├── storage/
-├── subbots/
-├── tools/
-└── utils/
+└── subbots/
 ```
 
 ---
