@@ -60,8 +60,7 @@ ${ownerName}
 📱 Número:
 https://wa.me/${ownerNumber}
 `.trim()
-
-        // Enviar con imagen si existe
+        
         if (botImage) {
             await conn.sendMessage(
                 m.chat,
