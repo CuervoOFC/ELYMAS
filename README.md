@@ -11,6 +11,16 @@
 </p>
 
 <p align="center">
+
+<img src="https://komarev.com/ghpvc/?username=CuervoOFC&label=Views&color=blueviolet&style=for-the-badge">
+
+<img src="https://img.shields.io/github/last-commit/CuervoOFC/ELYMAS?style=for-the-badge">
+
+<img src="https://img.shields.io/github/repo-size/CuervoOFC/ELYMAS?style=for-the-badge">
+
+</p>
+
+<p align="center">
   <b>Bot avanzado para WhatsApp desarrollado con Node.js y una versión modificada de @itsliaaa/baileys.</b>
 </p>
 
