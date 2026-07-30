@@ -177,3 +177,336 @@ Preparado para servidores VPS y Pterodactyl.
 </p>
 
 ---
+
+<!-- ========================================================= -->
+<!--                  CARACTERÍSTICAS                          -->
+<!-- ========================================================= -->
+
+# ✨ Características
+
+ElyMas Bot incorpora una gran cantidad de herramientas enfocadas en la automatización de WhatsApp, descargas multimedia y administración avanzada.
+
+---
+
+## 📥 Plataformas de Descarga
+
+<table>
+<tr>
+
+<td align="center" width="20%">
+
+### ▶️ YouTube
+
+🎵 MP3
+
+🎥 MP4
+
+📃 Playlist
+
+</td>
+
+<td align="center" width="20%">
+
+### 🎵 Spotify
+
+🎧 Canciones
+
+💿 Álbumes
+
+🖼 Portadas
+
+</td>
+
+<td align="center" width="20%">
+
+### 🎵 SoundCloud
+
+🎶 Audio
+
+📀 Información
+
+</td>
+
+<td align="center" width="20%">
+
+### 📹 TikTok
+
+Sin Marca de Agua
+
+HD
+
+Audio
+
+</td>
+
+<td align="center" width="20%">
+
+### 📷 Instagram
+
+Reels
+
+Videos
+
+Fotos
+
+Historias
+
+</td>
+
+</tr>
+</table>
+
+<table>
+<tr>
+
+<td align="center" width="25%">
+
+### 👍 Facebook
+
+Videos
+
+HD
+
+Audio
+
+</td>
+
+<td align="center" width="25%">
+
+### 📌 Pinterest
+
+Imágenes
+
+Videos
+
+GIF
+
+</td>
+
+<td align="center" width="25%">
+
+### ☁️ MediaFire
+
+Archivos
+
+Documentos
+
+ZIP
+
+APK
+
+</td>
+
+<td align="center" width="25%">
+
+### 🌐 URL
+
+Descarga directa
+
+Archivos
+
+Multimedia
+
+</td>
+
+</tr>
+</table>
+
+---
+
+## 📋 Plataformas Compatibles
+
+| Plataforma | Estado |
+|------------|:------:|
+| YouTube | ✅ |
+| TikTok | ✅ |
+| Spotify | ✅ |
+| Instagram | ✅ |
+| Facebook | ✅ |
+| Pinterest | ✅ |
+| SoundCloud | ✅ |
+| MediaFire | ✅ |
+| URL Directa | ✅ |
+
+---
+
+<details>
+
+<summary><b>📥 Mostrar todas las funciones de Descarga</b></summary>
+
+### Incluye
+
+- Descarga de audio.
+- Descarga de video.
+- Calidad HD.
+- Descarga mediante enlaces.
+- Información multimedia.
+- Miniaturas.
+- Metadatos.
+- Compatibilidad con múltiples APIs.
+- Optimización automática.
+- Descarga rápida.
+
+</details>
+
+---
+
+# 🤖 Sistema de SubBots
+
+El sistema de **SubBots** permite crear múltiples bots independientes utilizando la misma instalación principal.
+
+Cada SubBot posee su propia configuración, sesión y personalización.
+
+---
+
+## ✨ Características
+
+| Función | Disponible |
+|---------|:----------:|
+| Código de Vinculación | ✅ |
+| Sesión Individual | ✅ |
+| Configuración Individual | ✅ |
+| Reinicio Individual | ✅ |
+| Eliminación Individual | ✅ |
+| Base de Datos Individual | ✅ |
+| Imagen Individual | ✅ |
+| Nombre Individual | ✅ |
+| Owner Individual | ✅ |
+| Número Individual | ✅ |
+
+---
+
+## 🎨 Personalización
+
+Cada SubBot puede modificar completamente su identidad.
+
+### Configuración disponible
+
+- 🤖 Nombre del Bot
+- 👤 Nombre del Owner
+- ☎ Número del Owner
+- 🖼 Imagen del Bot
+- 📷 Foto de Perfil
+- 📝 Descripción
+- 🌎 Configuración General
+- 🎨 Personalización del Menú
+- ⚙ Configuración de Plugins
+
+---
+
+## 📂 Directorios del Sistema
+
+```text
+subbots/
+
+├── 521XXXXXXXXXX/
+│   ├── creds.json
+│   ├── config.json
+│   ├── database.json
+│   ├── plugins/
+│   └── media/
+│
+├── 573XXXXXXXXXX/
+│   ├── creds.json
+│   ├── config.json
+│   ├── database.json
+│   ├── plugins/
+│   └── media/
+│
+└── ...
+```
+
+---
+
+## ⚙ Configuración Independiente
+
+Cada SubBot almacena:
+
+- Su propia sesión.
+- Su propia base de datos.
+- Sus propios plugins.
+- Su propio menú.
+- Su propio Owner.
+- Su propia imagen.
+- Sus propios archivos multimedia.
+- Su configuración personalizada.
+
+---
+
+<details>
+
+<summary><b>🛠 Funciones del Sistema de SubBots</b></summary>
+
+### Administración
+
+- Crear SubBot.
+- Eliminar SubBot.
+- Reiniciar SubBot.
+- Reconectar automáticamente.
+- Actualizar configuración.
+- Cambiar nombre.
+- Cambiar imagen.
+- Cambiar Owner.
+- Cambiar número.
+- Restaurar configuración.
+
+</details>
+
+---
+
+# ⚙ Arquitectura Modular
+
+Los comandos están organizados por categorías para facilitar el mantenimiento y desarrollo.
+
+```text
+plugins/
+
+├── ai/
+├── anime/
+├── audio/
+├── convert/
+├── downloads/
+├── economy/
+├── fun/
+├── games/
+├── group/
+├── image/
+├── information/
+├── internet/
+├── nsfw/
+├── owner/
+├── search/
+├── sticker/
+├── storage/
+├── subbots/
+├── tools/
+└── utils/
+```
+
+---
+
+## 📦 Ventajas
+
+- Plugins independientes.
+- Fácil mantenimiento.
+- Mayor rendimiento.
+- Organización por categorías.
+- Carga automática.
+- Recarga dinámica.
+- Compatibilidad con futuras funciones.
+
+---
+
+## 🚀 Rendimiento
+
+| Característica | Estado |
+|---------------|:------:|
+| Plugins Dinámicos | ✅ |
+| Hot Reload | ✅ |
+| JSON Database | ✅ |
+| Auto Reconexión | ✅ |
+| Multi Sesión | ✅ |
+| Sistema Modular | ✅ |
+| Alto Rendimiento | ✅ |
+
+---
