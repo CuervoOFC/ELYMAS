@@ -44,12 +44,7 @@ export default {
         {
             conn
         }
-    ) {
-
-        // ==========================================
-        // VERIFICAR OWNER GLOBAL
-        // ==========================================
-
+    ) 
         const senderJid =
             m?.sender ||
             m?.key?.participant ||
@@ -88,10 +83,6 @@ export default {
 
         try {
 
-            // ==========================================
-            // ACTUALIZAR INFORMACIÓN REMOTA
-            // ==========================================
-
             await execAsync(
                 'git fetch origin'
             )
@@ -105,3 +96,153 @@ export default {
                 'git status -uno'
 
             )
+            
+            const hasUpdates =
+
+                status.includes(
+                    'Your branch is behind'
+                ) ||
+
+                status.includes(
+                    'Tu rama está detrás'
+                ) ||
+
+                status.includes(
+                    'can be fast-forwarded'
+                ) ||
+
+                status.includes(
+                    'puede ser actualizada'
+                )
+
+
+            if (
+                !hasUpdates
+            ) {
+
+                return m.reply(
+
+                    '✅ *ELYMAS-BOT YA ESTÁ ACTUALIZADO*\n\n' +
+
+                    'No hay cambios nuevos disponibles en GitHub.'
+
+                )
+
+            }
+
+
+            await m.reply(
+
+                '📥 *Actualización encontrada.*\n\n' +
+
+                '⬇️ Descargando cambios desde GitHub...'
+
+            )
+
+            let branch =
+                'main'
+
+            try {
+
+                const {
+
+                    stdout: currentBranch
+
+                } = await execAsync(
+
+                    'git branch --show-current'
+
+                )
+
+                branch =
+                    currentBranch.trim() ||
+                    'main'
+
+            }
+
+            catch {
+
+                branch =
+                    'main'
+
+            }
+
+            const {
+
+                stdout: pullOutput,
+
+                stderr: pullError
+
+            } = await execAsync(
+
+                `git pull origin ${branch}`
+
+            )
+
+
+            if (
+                pullError &&
+                !pullOutput
+            ) {
+
+                return m.reply(
+
+                    '❌ Error durante la actualización.\n\n' +
+
+                    pullError
+
+                )
+
+            }
+
+        await m.reply(
+            '🔄 *ACTUALIZANDO ELYMAS-BOT*\n\n' +
+            '⏳ Ejecutando `git pull`...'
+        )
+
+        exec('git pull', async (error, stdout, stderr) => {
+
+            if (error) {
+
+                console.error(error)
+
+                return m.reply(
+                    '❌ *ERROR AL ACTUALIZAR*\n\n' +
+                    `📄 ${error.message}`
+                )
+
+            }
+
+            if (stderr && !stdout) {
+
+                return m.reply(
+                    '⚠️ *GIT DEVOLVIÓ UNA ADVERTENCIA*\n\n' +
+                    stderr
+                )
+
+            }
+
+            const output = stdout.trim()
+
+            if (
+                output.includes('Already up to date.') ||
+                output.includes('Already up-to-date')
+            ) {
+
+                return m.reply(
+                    '✅ *ELYMAS-BOT YA ESTÁ ACTUALIZADO*\n\n' +
+                    'No existen cambios nuevos en GitHub.'
+                )
+
+            }
+
+            return m.reply(
+                '✅ *BOT ACTUALIZADO CORRECTAMENTE*\n\n' +
+                '```' +
+                output +
+                '```'
+            )
+
+        })
+
+    }
