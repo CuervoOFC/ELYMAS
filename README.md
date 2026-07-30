@@ -1,246 +1,179 @@
-# 🤖 ElyMas Bot
+<!-- ========================================================= -->
+<!--                       ELYMAS BOT                          -->
+<!-- ========================================================= -->
+
+<h1 align="center">
+  🤖 ElyMas Bot
+</h1>
 
 <p align="center">
-  <img src="https://i.imgur.com/8Km9tLL.png" width="220"/>
+  <img src="https://nube.stellarwa.xyz/rf/V1gIW9lK0qHU.jpg" width="260" alt="ElyMas Bot"/>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Baileys-Modified-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Version-1.0.0-orange?style=for-the-badge">
-  <img src="https://img.shields.io/badge/License-MIT-red?style=for-the-badge">
+  <b>Bot avanzado para WhatsApp desarrollado con Node.js y una versión modificada de @itsliaaa/baileys.</b>
 </p>
+
+---
+
+<p align="center">
+
+<img src="https://img.shields.io/github/stars/CuervoOFC/ELYMAS?style=for-the-badge&logo=github">
+
+<img src="https://img.shields.io/github/forks/CuervoOFC/ELYMAS?style=for-the-badge&logo=github">
+
+<img src="https://img.shields.io/github/issues/CuervoOFC/ELYMAS?style=for-the-badge">
+
+<img src="https://img.shields.io/github/license/CuervoOFC/ELYMAS?style=for-the-badge">
+
+</p>
+
+<p align="center">
+
+<img src="https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white">
+
+<img src="https://img.shields.io/badge/JavaScript-ES2024-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black">
+
+<img src="https://img.shields.io/badge/Baileys-Modified-5865F2?style=for-the-badge">
+
+<img src="https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white">
+
+<img src="https://img.shields.io/badge/SubBots-Supported-blueviolet?style=for-the-badge">
+
+<img src="https://img.shields.io/badge/License-GPLv3-red?style=for-the-badge">
+
+</p>
+
+---
+
+# 🌟 Bienvenido
+
+**ElyMas Bot** es un proyecto moderno desarrollado para ofrecer una experiencia completa dentro de **WhatsApp**, integrando herramientas de administración, descargas multimedia, automatización, utilidades y un potente sistema de **SubBots completamente independientes**.
+
+El proyecto fue creado pensando en la facilidad de uso, rendimiento, compatibilidad con las últimas versiones de WhatsApp y una arquitectura modular que facilita el desarrollo de nuevos comandos.
+
+---
+
+# 📚 Índice
+
+- [✨ Características](#-características)
+- [📥 Plataformas de Descarga](#-plataformas-de-descarga)
+- [🤖 Sistema de SubBots](#-sistema-de-subbots)
+- [⚙️ Arquitectura](#️-arquitectura)
+- [🚀 Instalación](#-instalación)
+- [📦 Requisitos](#-requisitos)
+- [📱 Compatibilidad](#-compatibilidad)
+- [📂 Estructura del Proyecto](#-estructura-del-proyecto)
+- [🛠 Tecnologías](#-tecnologías)
+- [❤️ Créditos](#️-créditos)
+- [📜 Licencia](#-licencia)
 
 ---
 
 # 📖 Descripción
 
-**ElyMas Bot** es un bot avanzado para **WhatsApp** desarrollado en **Node.js** utilizando una versión modificada de **@itsliaaa/baileys**.
+> **ElyMas Bot** es un bot avanzado para WhatsApp desarrollado en **Node.js**, utilizando una versión modificada de **@itsliaaa/baileys**, optimizada para ofrecer mayor compatibilidad con las últimas funciones de WhatsApp.
 
-Cuenta con un sistema completo de administración, descargas multimedia, subbots independientes y una arquitectura modular diseñada para facilitar la creación de nuevos comandos.
+Entre sus principales características se encuentran:
 
----
-
-# ✨ Características
-
-## 📥 Descargas
-
-- 🎵 YouTube MP3
-- 🎥 YouTube MP4
-- 🎵 Spotify
-- 🎵 SoundCloud
-- 📹 TikTok (Sin marca de agua)
-- 📷 Instagram
-- 👍 Facebook
-- 📌 Pinterest
-- 🌐 Descarga mediante URL
+- Sistema de SubBots.
+- Descargas multimedia.
+- Configuración personalizada.
+- Arquitectura modular.
+- Plugins dinámicos.
+- Administración avanzada.
+- Configuración individual por SubBot.
+- Base de datos JSON.
+- Compatible con múltiples plataformas.
 
 ---
 
-## 🤖 Sistema de SubBots
+# 🚀 ¿Por qué ElyMas Bot?
 
-Cada SubBot funciona de forma independiente.
+<table>
+<tr>
+<td align="center" width="25%">
 
-### Incluye
+## ⚡
 
-- Codigo de Vinculación
-- Sesiones independientes
-- Configuración individual
-- Reinicio independiente
-- Eliminación individual
+### Rápido
 
-### Personalización
+Sistema optimizado para ofrecer la mejor velocidad.
 
-Cada SubBot puede modificar:
+</td>
 
-- 🤖 Nombre del Bot
-- 👤 Nombre del Owner
-- ☎️ Número del Owner
-- 🖼 Imagen del Bot
-- 📷 Foto del Perfil
-- 📝 Descripción
-- 🌎 Configuración personalizada
+<td align="center" width="25%">
 
----
+## 🔒
 
-## ⚙️ Sistema Modular
+### Seguro
 
-Los comandos se encuentran separados por categorías.
+Configuraciones independientes para cada SubBot.
 
-```
-plugins/
-│
-├── downloads/
-├── owner/
-├── group/
-├── tools/
-├── fun/
-├── economy/
-├── ai/
-├── nsfw/
-├── search/
-├── sticker/
-└── subbots/
-```
+</td>
 
----
+<td align="center" width="25%">
 
-# 🚀 Instalación
+## 🧩
 
-## Clonar
+### Modular
 
-```bash
-git clone https://github.com/CuervoOFC/ELYMAS.git
-```
+Plugins organizados por categorías.
 
-Entrar
+</td>
 
-```bash
-cd ElyMasBot
-```
+<td align="center" width="25%">
 
-Instalar dependencias
+## 🌍
 
-```bash
-npm install
-```
+### Escalable
 
-Iniciar
+Preparado para servidores VPS y Pterodactyl.
 
-```bash
-npm start
-```
+</td>
 
-Modo desarrollo
-
-```bash
-npm run dev
-```
+</tr>
+</table>
 
 ---
 
-# 📦 Requisitos
+# 📊 Estado del Proyecto
 
-- NodeJS 18+
-- npm
-- Git
-- FFmpeg
-- ImageMagick
-
----
-
-# 📱 Compatibilidad
-
-✅ Android
-
-✅ Windows
-
-✅ Linux
-
-✅ VPS
-
-✅ Pterodactyl
-
-✅ Termux
+| Estado | Información |
+|---------|-------------|
+| 🚀 Desarrollo | Activo |
+| 📦 Versión | 1.0.0 |
+| 🟢 Node.js | 18+ |
+| 🤖 Baileys | @itsliaaa/baileys |
+| 📜 Licencia | GNU GPL v3.0 |
+| 🌎 Plataforma | WhatsApp |
 
 ---
 
-# 📂 Estructura
+# 🏆 Características Principales
 
-```
-.
-├── plugins
-├── lib
-├── database
-├── sessions
-├── subbots
-├── package.json
-└── index.js
-```
-
----
-
-# 📥 Plataformas soportadas
-
-- YouTube
-- TikTok
-- Spotify
-- Instagram
-- Facebook
-- Pinterest
-- MediaFire
+- ⚡ Arquitectura modular.
+- 🤖 Sistema de SubBots.
+- 📥 Descargas multimedia.
+- 🎵 Descarga de música.
+- 🎥 Descarga de videos.
+- 👤 Configuración por propietario.
+- 🖼 Personalización de imagen.
+- 📂 Base de datos JSON.
+- 🔄 Reconexión automática.
+- 🛠 Plugins dinámicos.
+- 🌐 Compatible con VPS.
+- 📱 Compatible con Android.
+- 🖥 Compatible con Linux.
+- 💻 Compatible con Windows.
+- 📦 Compatible con Pterodactyl.
 
 ---
 
-# 🔒 Funciones
+<p align="center">
 
-- AntiLink
-- Bienvenidas
-- Despedidas
-- Moderación
-- Owner
-- Administración
-- Backup
-- Base de datos JSON
-- Plugins dinámicos
-- Recarga automática
-- Configuración por chat
+## ⭐ Si este proyecto te gusta, no olvides dejar una estrella ⭐
+
+</p>
 
 ---
-
-# 🤖 Baileys
-
-Este proyecto utiliza una versión modificada de:
-
-**@itsliaaa/baileys**
-
-Con soporte para:
-
-- Nuevos tipos de mensajes
-- Botones
-- Álbumes
-- Eventos mejorados
-- Compatibilidad con las últimas versiones de WhatsApp
-
----
-
-# 💻 Tecnologías
-
-- Node.js
-- JavaScript
-- Baileys Modificado
-- Axios
-- Node Fetch
-- FFmpeg
-
----
-
-# ❤️ Créditos
-
-Desarrollado por **TheDevil**
-
-Con ❤️ para la comunidad de WhatsApp.
-
----
-
-# ⚠️ Aviso
-
-Este proyecto fue desarrollado únicamente con fines educativos.
-
-El uso indebido del bot es responsabilidad del usuario.
-
----
-
-# ⭐ Soporte
-
-Si te gusta el proyecto no olvides dejar una ⭐ al repositorio.
-
-También puedes contribuir creando nuevas funciones o corrigiendo errores.
-
----
-
-# 📜 Licencia
-
-MIT License
-
-Copyright © 2026 TheDevil
