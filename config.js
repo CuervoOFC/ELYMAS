@@ -16,7 +16,7 @@ De Cuervo-Team-Supreme
 export const config = {
 
     botName: 'Cuervo',
-    ownerName: 'Damian',
+    ownerName: 'TheDevil',
 
     owners: [
         '886958381686',
