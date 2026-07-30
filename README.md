@@ -66,16 +66,20 @@ El proyecto fue creado pensando en la facilidad de uso, rendimiento, compatibili
 
 # 📚 Índice
 
-- [✨ Características](#-características)
+- [🌟 Bienvenido](#-bienvenido)
+- [📖 Descripción](#-descripción)
+- [🏆 Características](#-características-principales)
 - [📥 Plataformas de Descarga](#-plataformas-de-descarga)
 - [🤖 Sistema de SubBots](#-sistema-de-subbots)
-- [⚙️ Arquitectura](#️-arquitectura)
+- [⚙ Arquitectura Modular](#-arquitectura-modular)
 - [🚀 Instalación](#-instalación)
 - [📦 Requisitos](#-requisitos)
-- [📱 Compatibilidad](#-compatibilidad)
 - [📂 Estructura del Proyecto](#-estructura-del-proyecto)
-- [🛠 Tecnologías](#-tecnologías)
-- [❤️ Créditos](#️-créditos)
+- [⚙ Tecnologías](#️-tecnologías-utilizadas)
+- [📊 Compatibilidad](#-compatibilidad)
+- [🌎 Comunidad](#-comunidad-oficial)
+- [🤝 Contribuciones](#-contribuciones)
+- [👨‍💻 Créditos](#-créditos)
 - [📜 Licencia](#-licencia)
 
 ---
