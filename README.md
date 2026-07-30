@@ -1137,6 +1137,12 @@ Eliminar los créditos originales no solo perjudica el reconocimiento del trabaj
 
 Dar crédito al autor original es una forma de reconocer el tiempo, esfuerzo y dedicación invertidos en el proyecto.
 
+# ⚖️ Reconocimiento al Proyecto
+
+Si utilizas este proyecto, realizas un fork o reutilizas parte del código, te pedimos conservar la atribución correspondiente al autor original y los avisos de copyright, conforme a los términos de la licencia GNU GPL v3.0.
+
+Respetar los créditos ayuda a reconocer el trabajo y el tiempo invertido en el desarrollo del proyecto.
+
 ---
 
 # 👨‍💻 Créditos
