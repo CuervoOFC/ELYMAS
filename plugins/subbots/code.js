@@ -1,3 +1,4 @@
+/*
 •❅──────✧✦✧──────❅•
 Codigo Creado Por CUERVO-TEAM-SUPREME
 Para Elymas-Bot Este Codigo Es 
