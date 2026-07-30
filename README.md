@@ -1248,17 +1248,15 @@ Este proyecto está distribuido bajo la licencia:
 
 # GNU General Public License v3.0
 
-Esto significa que eres libre de:
+## La licencia GPL v3.0 permite
 
-✅ Usar el proyecto.
+- ✅ Usar el proyecto.
+- ✅ Estudiar el código.
+- ✅ Modificarlo.
+- ✅ Distribuirlo.
+- ✅ Crear forks.
 
-✅ Estudiar el código.
-
-✅ Modificarlo.
-
-✅ Compartirlo.
-
-✅ Publicar tus modificaciones.
+Siempre que mantengas la licencia GPL y conserves los avisos de copyright y atribución correspondientes.
 
 Siempre respetando los términos establecidos por la licencia GPL v3.0.
 
