@@ -37,8 +37,8 @@ export default {
                 '│ .tiktok https://vm.tiktok.com/xxxxx,1\n' +
                 '│ .tiktok https://vm.tiktok.com/xxxxx,2\n' +
                 '│\n' +
-                '│ ,1 = EvoGB\n' +
-                '│ ,2 = Stellar\n' +
+                '│ , 1 = EvoGB\n' +
+                '│ , 2 = Stellar\n' +
                 '│\n' +
                 '│ Si no eliges API se usará Evo.\n' +
                 '╰──────────────'
@@ -48,12 +48,12 @@ export default {
         let api = 1
         let url = args.join(' ').trim()
 
-        if (url.endsWith(',2')) {
+        if (url.endsWith(', 2')) {
             api = 2
-            url = url.replace(/,2$/, '').trim()
-        } else if (url.endsWith(',1')) {
+            url = url.replace(/, 2$/, '').trim()
+        } else if (url.endsWith(', 1')) {
             api = 1
-            url = url.replace(/,1$/, '').trim()
+            url = url.replace(/, 1$/, '').trim()
         }
 
         if (
@@ -119,7 +119,6 @@ export default {
             const duration = data.duration || 'Desconocida'
             const author = data.author?.nickname || 'Desconocido'
 
-            // Enviamos el video directamente con toda la información en la descripción
             await conn.sendMessage(
                 m.chat,
                 {
@@ -141,18 +140,21 @@ export default {
                 { quoted: m }
             )
 
-            // Si tiene audio separado, lo enviamos
             if (music) {
-                await conn.sendMessage(
-                    m.chat,
-                    {
-                        audio: { url: music },
-                        mimetype: 'audio/mpeg',
-                        ptt: false,
-                        fileName: 'tiktok.mp3'
-                    },
-                    { quoted: m }
-                )
+                try {
+                    await conn.sendMessage(
+                        m.chat,
+                        {
+                            audio: { url: music },
+                            mimetype: 'audio/mpeg',
+                            ptt: false,
+                            fileName: 'tiktok.mp3'
+                        },
+                        { quoted: m }
+                    )
+                } catch (audioError) {
+                    console.log('⚠️ No se pudo enviar el audio de TikTok:', audioError.message)
+                }
             }
 
         } catch (error) {
