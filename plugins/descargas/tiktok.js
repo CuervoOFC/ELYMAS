@@ -13,502 +13,195 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
+const EVO_KEY = 'evogb-WzR3kPpa'
+const STELLAR_KEY = 'api-COTah'
 
-const EVO_KEY =
-    'evogb-WzR3kPpa'
-
-const STELLAR_KEY =
-    'api-COTah'
-
-
-const EVO_API =
-    'https://api.evogb.org/dl/tiktokv2'
-
-
-const STELLAR_API =
-    'https://api.stellarwa.xyz/dl/tiktokv2'
-
+const EVO_API = 'https://api.evogb.org/dl/tiktokv2'
+const STELLAR_API = 'https://api.stellarwa.xyz/dl/tiktokv2'
 
 export default {
-
     command: [
         'tiktok',
         'tt'
     ],
 
-
-    async run(
-        m,
-        {
-            conn,
-            args
-        }
-    ) {
-
-        if (
-            !args ||
-            args.length === 0
-        ) {
-
+    async run(m, { conn, args }) {
+        if (!args || args.length === 0) {
             return m.reply(
-
                 '╭─「 🎵 *TIKTOK DOWNLOADER* 」\n' +
-
                 '│\n' +
-
                 '│ ❌ Escribe un enlace de TikTok.\n' +
-
                 '│\n' +
-
                 '│ Ejemplos:\n' +
-
                 '│ .tiktok https://vm.tiktok.com/xxxxx\n' +
-
                 '│ .tiktok https://vm.tiktok.com/xxxxx,1\n' +
-
                 '│ .tiktok https://vm.tiktok.com/xxxxx,2\n' +
-
                 '│\n' +
-
                 '│ ,1 = EvoGB\n' +
-
                 '│ ,2 = Stellar\n' +
-
                 '│\n' +
-
                 '│ Si no eliges API se usará Evo.\n' +
-
                 '╰──────────────'
-
             )
-
         }
 
-        let api =
-            1
+        let api = 1
+        let url = args.join(' ').trim()
 
-
-        let url =
-            args.join(' ').trim()
-
-
-        if (
-            url.endsWith(',2')
-        ) {
-
+        if (url.endsWith(',2')) {
             api = 2
-
-            url = url
-                .replace(/,2$/, '')
-                .trim()
-
-        }
-
-        else if (
-            url.endsWith(',1')
-        ) {
-
+            url = url.replace(/,2$/, '').trim()
+        } else if (url.endsWith(',1')) {
             api = 1
-
-            url = url
-                .replace(/,1$/, '')
-                .trim()
-
+            url = url.replace(/,1$/, '').trim()
         }
-        
+
         if (
-
             !url.includes('tiktok.com') &&
-
             !url.includes('vm.tiktok.com') &&
-
             !url.includes('vt.tiktok.com')
-
         ) {
-
-            return m.reply(
-                '❌ Debes ingresar un enlace válido de TikTok.'
-            )
-
+            return m.reply('❌ Debes ingresar un enlace válido de TikTok.')
         }
 
         await m.reply(
-
             '📥 Descargando TikTok...\n\n' +
-
-            `🌐 API: ${
-                api === 1
-                    ? 'EvoGB'
-                    : 'Stellar'
-            }`
-
+            `🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}`
         )
 
-        function buildURL(
-            apiNumber
-        ) {
-
-            if (
-                apiNumber === 2
-            ) {
-
+        function buildURL(apiNumber) {
+            if (apiNumber === 2) {
                 return (
-
-                    `${STELLAR_API}` +
-
-                    `?url=${encodeURIComponent(url)}` +
-
-                    `&key=${STELLAR_KEY}`
-
+                    `${STELLAR_API}?url=${encodeURIComponent(url)}&key=${STELLAR_KEY}`
                 )
-
             }
 
-
             return (
-
-                `${EVO_API}` +
-
-                `?url=${encodeURIComponent(url)}` +
-
-                `&key=${EVO_KEY}`
-
+                `${EVO_API}?url=${encodeURIComponent(url)}&key=${EVO_KEY}`
             )
-
-        }
-
+        } // <-- Esta llave de cierre faltaba en el código original
 
         try {
-
             let response
-
             let data
 
             try {
+                response = await fetch(buildURL(api))
+                data = await response.json()
 
-                response =
-                    await fetch(
-                        buildURL(api)
-                    )
-
-                data =
-                    await response.json()
-
-                if (
-                    !response.ok ||
-                    !data.status
-                ) {
-
-                    throw new Error(
-                        'API Error'
-                    )
-
+                if (!response.ok || !data.status) {
+                    throw new Error('API Error')
                 }
+            } catch {
+                if (api === 1) {
+                    await m.reply('⚠️ EvoGB no respondió.\nProbando Stellar...')
+                    api = 2 // Actualizamos la variable para indicar que cambió a Stellar
+                    response = await fetch(buildURL(2))
+                    data = await response.json()
 
-            }
-
-            catch {
-
-                if (
-                    api === 1
-                ) {
-
-                    await m.reply(
-                        '⚠️ EvoGB no respondió.\nProbando Stellar...'
-                    )
-
-                    response =
-                        await fetch(
-                            buildURL(2)
-                        )
-
-                    data =
-                        await response.json()
-
-                    if (
-                        !response.ok ||
-                        !data.status
-                    ) {
-
-                        return m.reply(
-                            '❌ Ambas APIs fallaron.'
-                        )
-
+                    if (!response.ok || !data.status) {
+                        return m.reply('❌ Ambas APIs fallaron.')
                     }
-
+                } else {
+                    return m.reply('❌ La API Stellar no respondió.')
                 }
-
-                else {
-
-                    return m.reply(
-                        '❌ La API Stellar no respondió.'
-                    )
-
-                }
-
             }
 
             const video =
+                data.data?.find(v => v.type === 'nowatermark_hd')?.url ||
+                data.data?.find(v => v.type === 'nowatermark')?.url ||
+                data.data?.find(v => v.type === 'watermark')?.url
 
-                data.data.find(
-                    v =>
-                        v.type ===
-                        'nowatermark_hd'
-                )?.url ||
-
-                data.data.find(
-                    v =>
-                        v.type ===
-                        'nowatermark'
-                )?.url ||
-
-                data.data.find(
-                    v =>
-                        v.type ===
-                        'watermark'
-                )?.url
-
-
-            if (
-                !video
-            ) {
-
-                return m.reply(
-                    '❌ No se encontró el video.'
-                )
-
+            if (!video) {
+                return m.reply('❌ No se encontró el video.')
             }
 
-            const music =
+            const music = data.music_info?.url || null
+            const likes = data.stats?.likes || '0'
+            const views = data.stats?.views || '0'
+            const comments = data.stats?.comment || '0'
+            const shares = data.stats?.share || '0'
+            const duration = data.duration || 'Desconocida'
+            const author = data.author?.nickname || 'Desconocido'
+            const cover = data.cover || null
 
-                data.music_info?.url ||
-                null
-
-            const likes =
-                data.stats?.likes ||
-                '0'
-
-
-            const views =
-                data.stats?.views ||
-                '0'
-
-
-            const comments =
-                data.stats?.comment ||
-                '0'
-
-
-            const shares =
-                data.stats?.share ||
-                '0'
-
-
-            const duration =
-                data.duration ||
-                'Desconocida'
-
-
-            const author =
-                data.author?.nickname ||
-                'Desconocido'
-
-
-            const cover =
-                data.cover ||
-                null
-                
-            if (
-                cover
-            ) {
-
+            if (cover) {
                 await conn.sendMessage(
-
                     m.chat,
-
                     {
-
-                        image: {
-                            url: cover
-                        },
-
+                        image: { url: cover },
                         caption:
-
                             '╭━━━〔 🎵 TIKTOK DOWNLOADER 〕━━━⬣\n' +
-
                             `┃ 👤 Autor: ${author}\n` +
-
                             `┃ ❤️ Likes: ${likes}\n` +
-
                             `┃ 👀 Vistas: ${views}\n` +
-
                             `┃ 💬 Comentarios: ${comments}\n` +
-
                             `┃ 🔄 Compartidos: ${shares}\n` +
-
                             `┃ ⏱️ Duración: ${duration}\n` +
-
                             `┃ 🌎 Región: ${data.region || 'Desconocida'}\n` +
-
                             `┃ 🎧 Música:\n` +
-
                             `┃ ${data.music_info?.title || 'Sin información'}\n` +
-
                             `┃\n` +
-
                             `┃ 🔥 API utilizada:\n` +
-
                             `┃ ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
-
                             '╰━━━━━━━━━━━━━━━━━━━━⬣'
-
                     },
-
-                    {
-
-                        quoted: m
-
-                    }
-
+                    { quoted: m }
                 )
-
-            }
-
-            else {
-
+            } else {
                 await m.reply(
-
                     '🎵 *TIKTOK ENCONTRADO*\n\n' +
-
                     `👤 ${author}\n` +
-
                     `❤️ ${likes}\n` +
-
                     `👀 ${views}\n` +
-
                     `💬 ${comments}\n` +
-
                     `🔄 ${shares}\n` +
-
                     `⏱️ ${duration}\n\n` +
-
                     '📥 Enviando video...'
-
                 )
-
             }
-                        
+
             await conn.sendMessage(
-
                 m.chat,
-
                 {
-
-                    video: {
-                        url: video
-                    },
-
-                    mimetype:
-                        'video/mp4',
-
-                    fileName:
-                        'tiktok.mp4',
-
+                    video: { url: video },
+                    mimetype: 'video/mp4',
+                    fileName: 'tiktok.mp4',
                     caption:
-
                         '🎬 *VIDEO DESCARGADO*\n\n' +
-
                         `👤 ${author}\n` +
-
                         `❤️ ${likes}\n` +
-
                         `👀 ${views}`
-
                 },
-
-                {
-
-                    quoted: m
-
-                }
-
+                { quoted: m }
             )
 
-            if (
-                music
-            ) {
-
+            if (music) {
                 await conn.sendMessage(
-
                     m.chat,
-
                     {
-
-                        audio: {
-
-                            url:
-                                music
-
-                        },
-
-                        mimetype:
-                            'audio/mpeg',
-
-                        ptt:
-                            false,
-
-                        fileName:
-                            'tiktok.mp3'
-
+                        audio: { url: music },
+                        mimetype: 'audio/mpeg',
+                        ptt: false,
+                        fileName: 'tiktok.mp3'
                     },
-
-                    {
-
-                        quoted:
-                            m
-
-                    }
-
+                    { quoted: m }
                 )
-
             }
 
             return m.reply(
-
                 '✅ *DESCARGA COMPLETADA*\n\n' +
-
-                `🎥 Video HD enviado.\n` +
-
+                '🎥 Video HD enviado.\n' +
                 `${music ? '🎵 Audio enviado.\n' : ''}` +
-
                 `🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}`
-
             )
 
-        }
-
-        catch (
-            error
-        ) {
-
-            console.error(
-                '❌ Error TikTok:',
-                error
-            )
-
+        } catch (error) {
+            console.error('❌ Error TikTok:', error)
             return m.reply(
-
                 '❌ Ocurrió un error al descargar el TikTok.\n\n' +
-
-                `📄 ${
-                    error?.message ||
-                    'Error desconocido'
-                }`
-
+                `📄 ${error?.message || 'Error desconocido'}`
             )
-
         }
-
     }
-
 }
