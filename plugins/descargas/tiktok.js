@@ -71,15 +71,10 @@ export default {
 
         function buildURL(apiNumber) {
             if (apiNumber === 2) {
-                return (
-                    `${STELLAR_API}?url=${encodeURIComponent(url)}&key=${STELLAR_KEY}`
-                )
+                return `${STELLAR_API}?url=${encodeURIComponent(url)}&key=${STELLAR_KEY}`
             }
-
-            return (
-                `${EVO_API}?url=${encodeURIComponent(url)}&key=${EVO_KEY}`
-            )
-        } // <-- Esta llave de cierre faltaba en el código original
+            return `${EVO_API}?url=${encodeURIComponent(url)}&key=${EVO_KEY}`
+        }
 
         try {
             let response
@@ -95,7 +90,7 @@ export default {
             } catch {
                 if (api === 1) {
                     await m.reply('⚠️ EvoGB no respondió.\nProbando Stellar...')
-                    api = 2 // Actualizamos la variable para indicar que cambió a Stellar
+                    api = 2
                     response = await fetch(buildURL(2))
                     data = await response.json()
 
@@ -123,44 +118,8 @@ export default {
             const shares = data.stats?.share || '0'
             const duration = data.duration || 'Desconocida'
             const author = data.author?.nickname || 'Desconocido'
-            const cover = data.cover || null
 
-            if (cover) {
-                await conn.sendMessage(
-                    m.chat,
-                    {
-                        image: { url: cover },
-                        caption:
-                            '╭━━━〔 🎵 TIKTOK DOWNLOADER 〕━━━⬣\n' +
-                            `┃ 👤 Autor: ${author}\n` +
-                            `┃ ❤️ Likes: ${likes}\n` +
-                            `┃ 👀 Vistas: ${views}\n` +
-                            `┃ 💬 Comentarios: ${comments}\n` +
-                            `┃ 🔄 Compartidos: ${shares}\n` +
-                            `┃ ⏱️ Duración: ${duration}\n` +
-                            `┃ 🌎 Región: ${data.region || 'Desconocida'}\n` +
-                            `┃ 🎧 Música:\n` +
-                            `┃ ${data.music_info?.title || 'Sin información'}\n` +
-                            `┃\n` +
-                            `┃ 🔥 API utilizada:\n` +
-                            `┃ ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
-                            '╰━━━━━━━━━━━━━━━━━━━━⬣'
-                    },
-                    { quoted: m }
-                )
-            } else {
-                await m.reply(
-                    '🎵 *TIKTOK ENCONTRADO*\n\n' +
-                    `👤 ${author}\n` +
-                    `❤️ ${likes}\n` +
-                    `👀 ${views}\n` +
-                    `💬 ${comments}\n` +
-                    `🔄 ${shares}\n` +
-                    `⏱️ ${duration}\n\n` +
-                    '📥 Enviando video...'
-                )
-            }
-
+            // Enviamos el video directamente con toda la información en la descripción
             await conn.sendMessage(
                 m.chat,
                 {
@@ -168,14 +127,21 @@ export default {
                     mimetype: 'video/mp4',
                     fileName: 'tiktok.mp4',
                     caption:
-                        '🎬 *VIDEO DESCARGADO*\n\n' +
-                        `👤 ${author}\n` +
-                        `❤️ ${likes}\n` +
-                        `👀 ${views}`
+                        '╭━━━〔 🎵 TIKTOK DOWNLOADER 〕━━━⬣\n' +
+                        `┃ 👤 Autor: ${author}\n` +
+                        `┃ ❤️ Likes: ${likes}\n` +
+                        `┃ 👀 Vistas: ${views}\n` +
+                        `┃ 💬 Comentarios: ${comments}\n` +
+                        `┃ 🔄 Compartidos: ${shares}\n` +
+                        `┃ ⏱️ Duración: ${duration}\n` +
+                        `┃ 🎧 Música: ${data.music_info?.title || 'Sin información'}\n` +
+                        `┃ 🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
+                        '╰━━━━━━━━━━━━━━━━━━━━⬣'
                 },
                 { quoted: m }
             )
 
+            // Si tiene audio separado, lo enviamos
             if (music) {
                 await conn.sendMessage(
                     m.chat,
@@ -188,13 +154,6 @@ export default {
                     { quoted: m }
                 )
             }
-
-            return m.reply(
-                '✅ *DESCARGA COMPLETADA*\n\n' +
-                '🎥 Video HD enviado.\n' +
-                `${music ? '🎵 Audio enviado.\n' : ''}` +
-                `🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}`
-            )
 
         } catch (error) {
             console.error('❌ Error TikTok:', error)
