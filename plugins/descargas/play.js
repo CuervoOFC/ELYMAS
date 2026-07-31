@@ -13,508 +13,143 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-const EVO_KEY =
-    'evogb-WzR3kPpa'
+const EVO_KEY = 'evogb-WzR3kPpa'
+const STELLAR_KEY = 'api-COTah'
 
-const STELLAR_KEY =
-    'api-COTah'
-
-
-const SEARCH_API =
-    'https://api.evogb.org/search/yt'
-
-
-const EVO_DOWNLOAD_API =
-    'https://api.evogb.org/dl/ytmp3'
-
-
-const STELLAR_DOWNLOAD_API =
-    'https://api.stellarwa.xyz/dl/ytmp3'
-
+const SEARCH_API = 'https://api.evogb.org/search/yt'
+const EVO_DOWNLOAD_API = 'https://api.evogb.org/dl/ytmp3'
+const STELLAR_DOWNLOAD_API = 'https://api.stellarwa.xyz/dl/ytmp3'
 
 export default {
-
     command: [
         'play',
         'playaudio'
     ],
 
-
-    async run(
-        m,
-        {
-            conn,
-            args
-        }
-    ) {
-
-        if (
-            !args ||
-            args.length === 0
-        ) {
-
+    async run(m, { conn, args }) {
+        if (!args || args.length === 0) {
             return m.reply(
                 '╭─「 🎵 *YOUTUBE PLAY* 」\n' +
                 '│\n' +
-                '│ ❌ Escribe el nombre de una canción.\n' +
+                '│ ❌ Escribe el nombre o enlace de una canción.\n' +
                 '│\n' +
-                '│ 📌 Ejemplo:\n' +
+                '│ 📌 Ejemplos:\n' +
                 '│ .play nombre de la canción\n' +
-                '│\n' +
-                '│ 🎧 EvoGB:\n' +
-                '│ .play nombre de la canción, 1\n' +
-                '│\n' +
-                '│ ⚡ StellarWA:\n' +
-                '│ .play nombre de la canción, 2\n' +
+                '│ .play https://youtu.be/xxxxxx\n' +
                 '╰──────────────'
             )
-
         }
 
-        const fullText =
-            args.join(' ')
+        const fullText = args.join(' ')
+        let query = fullText
 
-        let apiNumber =
-            1
-
-
-        let query =
-            fullText
-
-
-        const parts =
-            fullText.split(',')
-
-
-        if (
-            parts.length > 1
-        ) {
-
-            const possibleApi =
-                parts[
-                    parts.length - 1
-                ].trim()
-
-
-            if (
-                possibleApi === '1' ||
-                possibleApi === '2'
-            ) {
-
-                apiNumber =
-                    Number(
-                        possibleApi
-                    )
-
-
-                parts.pop()
-
-
-                query =
-                    parts.join(
-                        ','
-                    ).trim()
-
-            }
-
+        const parts = fullText.split(',')
+        if (parts.length > 1 && (parts[parts.length - 1].trim() === '1' || parts[parts.length - 1].trim() === '2')) {
+            parts.pop()
+            query = parts.join(',').trim()
         }
 
-
-        if (
-            !query
-        ) {
-
-            return m.reply(
-                '❌ Escribe el nombre de la canción.'
-            )
-
+        if (!query) {
+            return m.reply('❌ Escribe el nombre o enlace de la canción.')
         }
-
-        await m.reply(
-            `🔎 Buscando en YouTube:\n\n` +
-            `🎵 *${query}*\n\n` +
-            `🌐 API seleccionada: ${
-                apiNumber === 1
-                    ? 'EvoGB'
-                    : 'StellarWA'
-            }`
-        )
-
 
         try {
+            let videoUrl = ''
+            let videoTitle = ''
+            let videoAuthor = 'Desconocido'
+            let videoDuration = 'Desconocida'
+            let videoViews = 'Desconocidas'
+            let videoCover = null
 
-            const searchUrl =
-                `${SEARCH_API}` +
-                `?query=${encodeURIComponent(
-                    query
-                )}` +
-                `&key=${EVO_KEY}`
+            const isLink = /https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i.test(query)
 
+            if (isLink) {
+                
+                videoUrl = query
+                videoTitle = 'Canción de YouTube'
+            } else {
+                
+                const searchUrl = `${SEARCH_API}?query=${encodeURIComponent(query)}&key=${EVO_KEY}`
+                const searchRes = await fetch(searchUrl)
 
-            const response =
-                await fetch(
-                    searchUrl
-                )
+                if (!searchRes.ok) throw new Error(`Error en la búsqueda (${searchRes.status})`)
 
+                const searchData = await searchRes.json()
+                if (!searchData.status || !Array.isArray(searchData.result) || searchData.result.length === 0) {
+                    return m.reply('❌ No se encontraron resultados para tu búsqueda.')
+                }
 
-            if (
-                !response.ok
-            ) {
-
-                throw new Error(
-                    `Error HTTP búsqueda ${response.status}`
-                )
-
+                const first = searchData.result[0]
+                videoUrl = first.url
+                videoTitle = first.title
+                videoAuthor = first.autor || first.author || 'Desconocido'
+                videoDuration = first.duration || 'Desconocida'
+                videoViews = first.views || 'Desconocidas'
+                videoCover = first.image || first.thumbnail || first.cover || null
             }
 
+            const captionText = 
+                '╭━━━〔 🎵 YOUTUBE PLAY 〕━━━⬣\n' +
+                `┃ 📌 *Título:* ${videoTitle}\n` +
+                `┃ 👤 *Autor:* ${videoAuthor}\n` +
+                `┃ ⏱️ *Duración:* ${videoDuration}\n` +
+                `┃ 👀 *Vistas:* ${videoViews}\n` +
+                '╰━━━━━━━━━━━━━━━━━━━━⬣\n\n' +
+                '⏳ *Descargando audio, por favor espera...*'
 
-            const searchData =
-                await response.json()
-
-
-            if (
-                !searchData.status ||
-                !Array.isArray(
-                    searchData.result
-                ) ||
-                searchData.result.length === 0
-            ) {
-
-                return m.reply(
-                    '❌ No se encontraron resultados.'
-                )
-
+            if (videoCover) {
+                await conn.sendMessage(m.chat, { image: { url: videoCover }, caption: captionText }, { quoted: m })
+            } else {
+                await m.reply(captionText)
             }
 
-            const first =
-                searchData.result[0]
+            async function getAudioDl(apiChoice) {
+                const endpoint = apiChoice === 1 ? EVO_DOWNLOAD_API : STELLAR_DOWNLOAD_API
+                const key = apiChoice === 1 ? EVO_KEY : STELLAR_KEY
+                const dlUrl = `${endpoint}?url=${encodeURIComponent(videoUrl)}&key=${key}`
 
-
-            const second =
-                searchData.result[1]
-
-
-            let resultText =
-                '╭━━━〔 🎵 RESULTADOS 〕━━━⬣\n\n'
-
-
-            resultText +=
-                `1️⃣ *${first.title}*\n` +
-                `👤 ${first.autor || 'Desconocido'}\n` +
-                `⏱️ ${first.duration || 'Desconocida'}\n` +
-                `👀 ${first.views || 'Desconocidas'}\n\n`
-
-
-            if (
-                second
-            ) {
-
-                resultText +=
-                    `2️⃣ *${second.title}*\n` +
-                    `👤 ${second.autor || 'Desconocido'}\n` +
-                    `⏱️ ${second.duration || 'Desconocida'}\n` +
-                    `👀 ${second.views || 'Desconocidas'}\n\n`
-
+                const res = await fetch(dlUrl)
+                if (!res.ok) throw new Error(`HTTP Error ${res.status}`)
+                
+                const json = await res.json()
+                if (!json.status || !json.data || !json.data.dl) throw new Error('Sin enlace de descarga')
+                
+                return json.data
             }
 
+            let audioData = null
 
-            resultText +=
-                `🌐 API: ${
-                    apiNumber === 1
-                        ? 'EvoGB'
-                        : 'StellarWA'
-                }\n\n` +
+            try {
+                audioData = await getAudioDl(1)
+            } catch {
+                audioData = await getAudioDl(2)
+            }
 
-                `📌 Para elegir:\n` +
-
-                `.play ${query} 1\n` +
-
-                `.play ${query} 2\n\n` +
-
-                `⚠️ La selección de API se hace así:\n` +
-
-                `.play ${query}, 1\n` +
-
-                `.play ${query}, 2\n` +
-
-                '╰━━━━━━━━━━━━━━━━━━⬣'
-
-            const video =
-                first
-
-
-            await m.reply(
-                '🎵 *Resultado encontrado*\n\n' +
-
-                `📌 *Título:* ${
-                    video.title
-                }\n` +
-
-                `👤 *Autor:* ${
-                    video.autor ||
-                    'Desconocido'
-                }\n` +
-
-                `⏱️ *Duración:* ${
-                    video.duration ||
-                    'Desconocida'
-                }\n\n` +
-
-                `🌐 *API:* ${
-                    apiNumber === 1
-                        ? 'EvoGB'
-                        : 'StellarWA'
-                }\n\n` +
-
-                '⏳ Descargando audio...'
+            await conn.sendMessage(
+                m.chat,
+                {
+                    audio: { url: audioData.dl },
+                    mimetype: 'audio/mpeg',
+                    fileName: `${sanitizeFileName(audioData.title || videoTitle)}.mp3`,
+                    ptt: false
+                },
+                { quoted: m }
             )
 
-            if (
-                apiNumber === 1
-            ) {
-
-                const downloadUrl =
-                    `${EVO_DOWNLOAD_API}` +
-                    `?url=${encodeURIComponent(
-                        video.url
-                    )}` +
-                    `&key=${EVO_KEY}`
-
-
-                const downloadResponse =
-                    await fetch(
-                        downloadUrl
-                    )
-
-
-                if (
-                    !downloadResponse.ok
-                ) {
-
-                    throw new Error(
-                        `Error EvoGB HTTP ${
-                            downloadResponse.status
-                        }`
-                    )
-
-                }
-
-
-                const downloadData =
-                    await downloadResponse.json()
-
-
-                if (
-                    !downloadData.status ||
-                    !downloadData.data ||
-                    !downloadData.data.dl
-                ) {
-
-                    throw new Error(
-                        'EvoGB no devolvió el audio'
-                    )
-
-                }
-
-
-                const data =
-                    downloadData.data
-
-
-                await conn.sendMessage(
-
-                    m.chat,
-
-                    {
-
-                        audio: {
-                            url:
-                                data.dl
-                        },
-
-                        mimetype:
-                            'audio/mpeg',
-
-                        fileName:
-                            `${sanitizeFileName(
-                                data.title ||
-                                video.title
-                            )}.mp3`,
-
-                        ptt:
-                            false
-
-                    },
-
-                    {
-
-                        quoted:
-                            m
-
-                    }
-
-                )
-
-            }
-            
-            else {
-
-                const downloadUrl =
-                    `${STELLAR_DOWNLOAD_API}` +
-                    `?url=${encodeURIComponent(
-                        video.url
-                    )}` +
-                    `&key=${STELLAR_KEY}`
-
-
-                const downloadResponse =
-                    await fetch(
-                        downloadUrl
-                    )
-
-
-                if (
-                    !downloadResponse.ok
-                ) {
-
-                    throw new Error(
-                        `Error StellarWA HTTP ${
-                            downloadResponse.status
-                        }`
-                    )
-
-                }
-
-
-                const downloadData =
-                    await downloadResponse.json()
-
-
-                if (
-                    !downloadData.status ||
-                    !downloadData.data ||
-                    !downloadData.data.dl
-                ) {
-
-                    throw new Error(
-                        'StellarWA no devolvió el audio'
-                    )
-
-                }
-
-
-                const data =
-                    downloadData.data
-
-
-                await conn.sendMessage(
-
-                    m.chat,
-
-                    {
-
-                        audio: {
-                            url:
-                                data.dl
-                        },
-
-                        mimetype:
-                            'audio/mpeg',
-
-                        fileName:
-                            `${sanitizeFileName(
-                                data.title ||
-                                video.title
-                            )}.mp3`,
-
-                        ptt:
-                            false
-
-                    },
-
-                    {
-
-                        quoted:
-                            m
-
-                    }
-
-                )
-
-            }
-
+        } catch (error) {
+            console.error('❌ Error en play:', error)
             return m.reply(
-
-                '✅ *AUDIO ENVIADO CORRECTAMENTE*\n\n' +
-
-                `🎵 ${
-                    video.title
-                }\n\n` +
-
-                `🌐 API utilizada: ${
-                    apiNumber === 1
-                        ? 'EvoGB'
-                        : 'StellarWA'
-                }`
-
+                '❌ Ocurrió un error al procesar el audio.\n\n' +
+                `📄 ${error instanceof Error ? error.message : 'Error desconocido'}`
             )
-
-
-        } catch (
-            error
-        ) {
-
-
-            console.error(
-                '❌ Error en play:',
-                error
-            )
-
-
-            return m.reply(
-
-                '❌ Ocurrió un error al buscar o descargar el audio.\n\n' +
-
-                `📄 ${
-                    error instanceof Error
-                        ? error.message
-                        : 'Error desconocido'
-                }`
-
-            )
-
         }
-
     }
-
 }
 
-function sanitizeFileName(
-    input
-) {
-
-    return String(
-        input ||
-        'audio'
-    )
-
-        .replace(
-            /[<>:"/\\|?*\u0000-\u001f]/g,
-            ''
-        )
-
-        .replace(
-            /\s+/g,
-            ' '
-        )
-
+function sanitizeFileName(input) {
+    return String(input || 'audio')
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+        .replace(/\s+/g, ' ')
         .trim()
-
-        .slice(
-            0,
-            100
-        ) ||
-
-        'audio'
-
-                  }
+        .slice(0, 100) || 'audio'
+}
