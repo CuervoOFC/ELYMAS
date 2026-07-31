@@ -13,7 +13,6 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-
 import { exec } from 'child_process'
 import util from 'util'
 import config from '../../config.js'
@@ -21,228 +20,107 @@ import config from '../../config.js'
 const execAsync = util.promisify(exec)
 
 function extractPureNumber(target) {
-
     if (!target) return ''
-
     return String(target)
         .split('@')[0]
         .split(':')[0]
         .replace(/[^0-9]/g, '')
-
 }
 
 export default {
-
     command: [
         'update',
         'actualizar',
         'gitpull'
     ],
 
-    async run(
-        m,
-        {
-            conn
-        }
-    ) 
+    async run(m, { conn }) {
         const senderJid =
             m?.sender ||
             m?.key?.participant ||
             m?.key?.remoteJid ||
             ''
 
-        const senderNum =
-            extractPureNumber(senderJid)
+        const senderNum = extractPureNumber(senderJid)
 
         const isMainOwner =
             Array.isArray(config?.owners) &&
             config.owners.some(
-                owner =>
-                    extractPureNumber(owner) === senderNum
+                owner => extractPureNumber(owner) === senderNum
             )
 
-        if (
-            !isMainOwner
-        ) {
-
-            return m.reply(
-
-                '🚫 Este comando solo puede ser usado por el *Owner Global*.'
-
-            )
-
+        if (!isMainOwner) {
+            return m.reply('🚫 Este comando solo puede ser usado por el *Owner Global*.')
         }
 
-        await m.reply(
-
-            '🔄 *Buscando nuevas actualizaciones...*\n\n' +
-
-            '⏳ Espera un momento.'
-
-        )
+        await m.reply('🔄 *Buscando nuevas actualizaciones...*\n\n⏳ Espera un momento.')
 
         try {
+            await execAsync('git fetch origin')
 
-            await execAsync(
-                'git fetch origin'
-            )
+            const { stdout: status } = await execAsync('git status -uno')
 
-            const {
-
-                stdout: status
-
-            } = await execAsync(
-
-                'git status -uno'
-
-            )
-            
             const hasUpdates =
+                status.includes('Your branch is behind') ||
+                status.includes('Tu rama está detrás') ||
+                status.includes('can be fast-forwarded') ||
+                status.includes('puede ser actualizada')
 
-                status.includes(
-                    'Your branch is behind'
-                ) ||
-
-                status.includes(
-                    'Tu rama está detrás'
-                ) ||
-
-                status.includes(
-                    'can be fast-forwarded'
-                ) ||
-
-                status.includes(
-                    'puede ser actualizada'
-                )
-
-
-            if (
-                !hasUpdates
-            ) {
-
+            if (!hasUpdates) {
                 return m.reply(
-
                     '✅ *ELYMAS-BOT YA ESTÁ ACTUALIZADO*\n\n' +
-
                     'No hay cambios nuevos disponibles en GitHub.'
-
                 )
-
             }
-
 
             await m.reply(
-
                 '📥 *Actualización encontrada.*\n\n' +
-
                 '⬇️ Descargando cambios desde GitHub...'
-
             )
 
-            let branch =
-                'main'
+            let branch = 'main'
 
             try {
-
-                const {
-
-                    stdout: currentBranch
-
-                } = await execAsync(
-
-                    'git branch --show-current'
-
-                )
-
-                branch =
-                    currentBranch.trim() ||
-                    'main'
-
+                const { stdout: currentBranch } = await execAsync('git branch --show-current')
+                branch = currentBranch.trim() || 'main'
+            } catch {
+                branch = 'main'
             }
 
-            catch {
+            const { stdout: pullOutput, stderr: pullError } = await execAsync(`git pull origin ${branch}`)
 
-                branch =
-                    'main'
-
-            }
-
-            const {
-
-                stdout: pullOutput,
-
-                stderr: pullError
-
-            } = await execAsync(
-
-                `git pull origin ${branch}`
-
-            )
-
-
-            if (
-                pullError &&
-                !pullOutput
-            ) {
-
-                return m.reply(
-
-                    '❌ Error durante la actualización.\n\n' +
-
-                    pullError
-
-                )
-
-            }
-
-        await m.reply(
-            '🔄 *ACTUALIZANDO ELYMAS-BOT*\n\n' +
-            '⏳ Ejecutando `git pull`...'
-        )
-
-        exec('git pull', async (error, stdout, stderr) => {
-
-            if (error) {
-
-                console.error(error)
-
+            if (pullError && !pullOutput) {
                 return m.reply(
                     '❌ *ERROR AL ACTUALIZAR*\n\n' +
-                    `📄 ${error.message}`
+                    pullError
                 )
-
             }
 
-            if (stderr && !stdout) {
-
-                return m.reply(
-                    '⚠️ *GIT DEVOLVIÓ UNA ADVERTENCIA*\n\n' +
-                    stderr
-                )
-
-            }
-
-            const output = stdout.trim()
+            const output = pullOutput.trim()
 
             if (
                 output.includes('Already up to date.') ||
                 output.includes('Already up-to-date')
             ) {
-
                 return m.reply(
                     '✅ *ELYMAS-BOT YA ESTÁ ACTUALIZADO*\n\n' +
                     'No existen cambios nuevos en GitHub.'
                 )
-
             }
 
             return m.reply(
                 '✅ *BOT ACTUALIZADO CORRECTAMENTE*\n\n' +
-                '```' +
+                '```\n' +
                 output +
-                '```'
+                '\n```'
             )
 
-        })
-
+        } catch (error) {
+            console.error(error)
+            return m.reply(
+                '❌ *ERROR AL ACTUALIZAR*\n\n' +
+                `📄 ${error.message}`
+            )
+        }
     }
+}
