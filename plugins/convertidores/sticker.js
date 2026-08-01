@@ -22,7 +22,6 @@ const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
 
-// Helper para convertir el Stream de Baileys en un Buffer
 async function streamToBuffer(stream) {
     let buffer = Buffer.alloc(0)
     for await (const chunk of stream) {
@@ -35,14 +34,12 @@ export default {
     command: ['sticker', 's', 'stiker'],
 
     async run(m, { conn, args }) {
-        // 1. Configuración de nombres del Subbot / Owner
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
         const botData = getSubbotConfig(rawJid, config)
 
         const defaultPackname = botData.name || config.botName || 'Cuervo'
         const defaultAuthor = botData.ownerName || config.ownerName || 'TheDevil'
 
-        // 2. Extraer mensaje objetivo
         const q = m.quoted ? m.quoted : m
         const rawMessage = q.message || q.msg || q
 
@@ -74,7 +71,7 @@ export default {
         await m.reply('⏳ *Creando sticker...*')
 
         try {
-            // 3. Descargar el archivo desde el mensaje
+        
             let mediaBuffer
             try {
                 const streamType = mime.split('/')[0]
@@ -90,7 +87,6 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
-            // 4. SUBIDA INICIAL (EvoGB -> Respaldo StellarWA)
             let mediaUrl = ''
 
             try {
@@ -129,7 +125,6 @@ export default {
                 }
             }
 
-            // 5. CONVERTIR A WEBP USANDO API CONVERTER EVOGB
             const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=webp&key=${EVO_KEY}`
             
             const webpRes = await fetch(convertUrl)
@@ -137,10 +132,8 @@ export default {
                 throw new Error(`La API Converter devolvió status ${webpRes.status}`)
             }
 
-            // Descargar el resultado en WebP directamente
             const webpBuffer = Buffer.from(await webpRes.arrayBuffer())
 
-            // 6. Configurar Nombre del Pack y Autor personalizado
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -153,7 +146,6 @@ export default {
                 packname = text.trim()
             }
 
-            // 7. Enviar Sticker WebP generado a WhatsApp
             await conn.sendMessage(
                 m.chat,
                 {
