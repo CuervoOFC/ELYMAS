@@ -13,7 +13,7 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-import { downloadContentFromMessage } from '@whiskeysockets/baileys'
+import { downloadContentFromMessage } from '@itsliaaa/baileys'
 
 const EVO_KEY = 'evogb-WzR3kPpa'
 const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
