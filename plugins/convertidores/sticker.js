@@ -8,16 +8,14 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion de stickers desde imagen o video
-ʚĭɞ r estado :: completo
+ʚĭɞ ೃ funcion :: creacion de stickers dinámicos con datos de Subbot
+ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadMediaMessage } from '@itsliaaa/baileys'
-
-// Datos por defecto para el Pack de Sticker
-const DEFAULT_PACKNAME = 'Elymas-Bot'
-const DEFAULT_AUTHOR = 'Cuervo-Team-Supreme'
+import config from '../../config.js'
+import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 export default {
     command: [
@@ -27,11 +25,19 @@ export default {
     ],
 
     async run(m, { conn, args }) {
-        // Detectar si responde a un mensaje o es un mensaje directo
+        
+        const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
+        const botData = getSubbotConfig(rawJid, config)
+
+        
+        const defaultPackname = botData.name || config.botName || 'Cuervo'
+        const defaultAuthor = botData.ownerName || config.ownerName || 'TheDevil'
+
+        
         const q = m.quoted ? m.quoted : m
         const rawMessage = q.message || q.msg || q
 
-        // Detectar si es una Imagen o Video
+        
         const mime = (
             rawMessage.imageMessage?.mimetype ||
             rawMessage.videoMessage?.mimetype ||
@@ -39,7 +45,7 @@ export default {
             ''
         )
 
-        // Validar que sea un archivo multimedia compatible
+        
         if (!mime || (!mime.includes('image') && !mime.includes('video'))) {
             return m.reply(
                 '╭─「 🖼️ *STICKER MAKER* 」\n' +
@@ -47,13 +53,13 @@ export default {
                 '│ ❌ Responde a una *imagen* o *video* con el comando.\n' +
                 '│\n' +
                 '│ 📌 *Ejemplos de Uso:*\n' +
-                '│ • Responde a una imagen con `.s`\n' +
-                '│ • Responde a una imagen con `.sticker NombrePack | Autor`\n' +
+                '│ • Responde a una imagen con `.s` (Usará el nombre de este Bot)\n' +
+                '│ • Responde a una imagen con `.s Pack Personalizado | Tu Nombre`\n' +
                 '╰──────────────'
             )
         }
 
-        // Si es video, validar que no dure demasiado (máx 10 segundos para WhatsApp)
+        
         const duration = rawMessage.videoMessage?.seconds || 0
         if (duration > 11) {
             return m.reply('❌ El video no puede durar más de 10 segundos para convertirse en sticker.')
@@ -62,7 +68,7 @@ export default {
         await m.reply('⏳ *Creando sticker, por favor espera...*')
 
         try {
-            // Descargar el contenido multimedia usando la función nativa de Baileys
+            
             let mediaBuffer
             try {
                 mediaBuffer = await downloadMediaMessage(
@@ -83,10 +89,10 @@ export default {
 
             if (!mediaBuffer) throw new Error('No se pudo obtener el archivo del mensaje.')
 
-            // Extraer nombre del pack y autor enviando texto opcional (ej: .s PackName | Author)
+            
             const text = args.join(' ')
-            let packname = DEFAULT_PACKNAME
-            let author = DEFAULT_AUTHOR
+            let packname = defaultPackname
+            let author = defaultAuthor
 
             if (text.includes('|')) {
                 const [p, a] = text.split('|')
@@ -96,7 +102,7 @@ export default {
                 packname = text.trim()
             }
 
-            // Enviar el sticker generado aprovechando el soporte nativo de envio de stickers de Baileys
+            
             await conn.sendMessage(
                 m.chat,
                 {
