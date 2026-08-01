@@ -32,6 +32,9 @@
     "@hapi/boom": "^10.0.1",
     "@itsliaaa/baileys": "latest",
     "node-cache": "*",
+    "wa-sticker-formatter": "*",
+    "sharp": "*",
+    "fluent-ffmpeg": "*",
     "pino": "^9.7.0"
   },
   "engines": {
