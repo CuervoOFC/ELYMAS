@@ -8,13 +8,13 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion de stickers locales usando wa-sticker-formatter
-ʚĭɞ ೃ estado :: completo
+ʚĭɞ ೃ funcion :: creacion de stickers locales usando sticker-craft
+ʚĭɞ r estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadContentFromMessage } from '@itsliaaa/baileys'
-import { Sticker, StickerTypes } from 'wa-sticker-formatter'
+import { Sticker } from 'sticker-craft'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
@@ -71,7 +71,6 @@ export default {
         )
 
         try {
-            
             let mediaBuffer
             try {
                 const streamType = mime.split('/')[0]
@@ -99,12 +98,10 @@ export default {
                 packname = text.trim()
             }
 
-            const isVideo = mime.startsWith('video')
             const sticker = new Sticker(mediaBuffer, {
                 pack: packname,
                 author: author,
-                type: StickerTypes.FULL,
-                quality: isVideo ? 60 : 90 
+                type: 'full'
             })
 
             const stickerBuffer = await sticker.toBuffer()
