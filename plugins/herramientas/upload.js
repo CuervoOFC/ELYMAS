@@ -13,8 +13,6 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-import { downloadContentFromMessage } from '@itsliaaa/baileys'
-
 const EVO_KEY = 'evogb-WzR3kPpa'
 const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
@@ -31,19 +29,20 @@ export default {
 
     async run(m, { conn, args }) {
         
-        const q = m.quoted ? m.quoted : m
-        const mime = (q.msg || q).mimetype || q.mediaType || ''
+        const quoted = m.quoted ? m.quoted : m
+        const mime = (quoted.msg || quoted).mimetype || quoted.mediaType || quoted.mtype || ''
 
-        if (!mime) {
+        
+        if (!mime || mime === 'conversation') {
             return m.reply(
                 '╭─「 ☁️ *UPLOADER / TOURL* 」\n' +
                 '│\n' +
-                '│ ❌ Responde a una *imagen, video, audio o documento*.\n' +
+                '│ ❌ Responde a una *imagen, video, audio, documento o sticker*.\n' +
                 '│\n' +
                 '│ 📌 *Opciones de Servidor:*\n' +
-                '│ .upload      ➔ (por defecto | máx 150MB)\n' +
-                '│ .upload , 1  ➔ Servidor (máx 150MB)\n' +
-                '│ .upload , 2  ➔ Servidor (máx 40MB)\n' +
+                '│ .upload      ➔ EvoGB (por defecto | máx 150MB)\n' +
+                '│ .upload , 1  ➔ Servidor EvoGB (máx 150MB)\n' +
+                '│ .upload , 2  ➔ Servidor StellarWA (máx 40MB)\n' +
                 '╰──────────────'
             )
         }
@@ -58,20 +57,22 @@ export default {
         await m.reply('⏳ *Descargando archivo y procesando subida...*')
 
         try {
-  
-            const mediaBuffer = await q.download()
-            if (!mediaBuffer) throw new Error('No se pudo obtener el contenido del archivo.')
+            
+            const mediaBuffer = await quoted.download()
+            if (!mediaBuffer) throw new Error('No se pudo descargar el archivo del mensaje.')
 
             const fileSize = mediaBuffer.length
 
+            
             async function uploadToEvo() {
                 if (fileSize > MAX_SIZE_EVO) {
                     throw new Error(`El archivo supera el límite de 150 MB de EvoGB. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
                 }
 
                 const formData = new FormData()
+                const extension = mime.split('/')[1]?.split(';')[0] || 'bin'
                 const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${mime.split('/')[1] || 'bin'}`)
+                formData.append('file', blob, `file.${extension}`)
 
                 const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
                     method: 'POST',
@@ -91,14 +92,16 @@ export default {
                 }
             }
 
+            
             async function uploadToStellar() {
                 if (fileSize > MAX_SIZE_STELLAR) {
                     throw new Error(`El archivo supera el límite de 40 MB de StellarWA. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
                 }
 
                 const formData = new FormData()
+                const extension = mime.split('/')[1]?.split(';')[0] || 'bin'
                 const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${mime.split('/')[1] || 'bin'}`)
+                formData.append('file', blob, `file.${extension}`)
 
                 const res = await fetch(STELLAR_UPLOAD_API, {
                     method: 'POST',
