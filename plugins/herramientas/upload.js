@@ -13,6 +13,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
+import { downloadMediaMessage } from '@itsliaaa/baileys'
+
 const EVO_KEY = 'evogb-WzR3kPpa'
 const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
@@ -28,12 +30,24 @@ export default {
     ],
 
     async run(m, { conn, args }) {
+        // 1. Obtener el objeto del mensaje (si responde a uno o si es directo)
+        const q = m.quoted ? m.quoted : m
         
-        const quoted = m.quoted ? m.quoted : m
-        const mime = (quoted.msg || quoted).mimetype || quoted.mediaType || quoted.mtype || ''
+        // 2. Extraer de forma segura el objeto de mensaje real
+        const rawMessage = q.message || q.msg || q
 
-        
-        if (!mime || mime === 'conversation') {
+        // 3. Detectar si contiene contenido multimedia
+        const mime = (
+            rawMessage.imageMessage?.mimetype ||
+            rawMessage.videoMessage?.mimetype ||
+            rawMessage.audioMessage?.mimetype ||
+            rawMessage.documentMessage?.mimetype ||
+            rawMessage.stickerMessage?.mimetype ||
+            q.mimetype ||
+            ''
+        )
+
+        if (!mime) {
             return m.reply(
                 '╭─「 ☁️ *UPLOADER / TOURL* 」\n' +
                 '│\n' +
@@ -57,22 +71,43 @@ export default {
         await m.reply('⏳ *Descargando archivo y procesando subida...*')
 
         try {
-            
-            const mediaBuffer = await quoted.download()
-            if (!mediaBuffer) throw new Error('No se pudo descargar el archivo del mensaje.')
+            // 4. Descargar el archivo usando el método nativo de Baileys
+            let mediaBuffer
+            try {
+                // Intentar primero con la función oficial de la librería
+                mediaBuffer = await downloadMediaMessage(
+                    q,
+                    'buffer',
+                    {},
+                    { logger: conn.logger, reuploadRequest: conn.updateMediaMessage }
+                )
+            } catch (dlErr) {
+                // Métodos de respaldo en caso de estructuras de wrapper
+                if (typeof q.download === 'function') {
+                    mediaBuffer = await q.download()
+                } else if (typeof conn.downloadMediaMessage === 'function') {
+                    mediaBuffer = await conn.downloadMediaMessage(q)
+                } else {
+                    throw dlErr
+                }
+            }
+
+            if (!mediaBuffer) {
+                throw new Error('No se pudo descargar el archivo del mensaje respondido.')
+            }
 
             const fileSize = mediaBuffer.length
 
-            
+            // Subida a EvoGB
             async function uploadToEvo() {
                 if (fileSize > MAX_SIZE_EVO) {
                     throw new Error(`El archivo supera el límite de 150 MB de EvoGB. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
                 }
 
                 const formData = new FormData()
-                const extension = mime.split('/')[1]?.split(';')[0] || 'bin'
+                const ext = mime.split('/')[1]?.split(';')[0] || 'bin'
                 const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${extension}`)
+                formData.append('file', blob, `file.${ext}`)
 
                 const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
                     method: 'POST',
@@ -92,16 +127,16 @@ export default {
                 }
             }
 
-            
+            // Subida a StellarWA
             async function uploadToStellar() {
                 if (fileSize > MAX_SIZE_STELLAR) {
                     throw new Error(`El archivo supera el límite de 40 MB de StellarWA. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
                 }
 
                 const formData = new FormData()
-                const extension = mime.split('/')[1]?.split(';')[0] || 'bin'
+                const ext = mime.split('/')[1]?.split(';')[0] || 'bin'
                 const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${extension}`)
+                formData.append('file', blob, `file.${ext}`)
 
                 const res = await fetch(STELLAR_UPLOAD_API, {
                     method: 'POST',
@@ -123,13 +158,14 @@ export default {
 
             let fileData = null
 
+            // Lógica de Servidores y Respaldo
             if (selectedServer === 2) {
                 fileData = await uploadToStellar()
             } else {
                 try {
                     fileData = await uploadToEvo()
                 } catch (error) {
-                    console.log('⚠️ EvoGB falló o excedió tamaño, intentando respaldo con StellarWA...', error.message)
+                    console.log('⚠️ EvoGB falló o excedió límite. Probando StellarWA...', error.message)
                     fileData = await uploadToStellar()
                 }
             }
@@ -146,7 +182,7 @@ export default {
         } catch (error) {
             console.error('❌ Error en upload:', error)
             return m.reply(
-                '❌ Ocurrió un error al subir el archivo.\n\n' +
+                '❌ Ocurrió un error al procesar la subida del archivo.\n\n' +
                 `📄 ${error instanceof Error ? error.message : 'Error desconocido'}`
             )
         }
