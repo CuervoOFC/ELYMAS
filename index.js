@@ -1,4 +1,3 @@
-
 /*
 •❅──────✧✦✧──────❅•
 Codigo Creado Por CUERVO-TEAM-SUPREME
@@ -9,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: index.js
-ʚĭɞ ೃ funcion :: inicio de bot
+ʚĭɞ ೃ funcion :: inicio de bot e integracion de bienvenidas/despedidas
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -32,6 +31,8 @@ import handler, {
 import {
     initializeAllSubBots
 } from './lib/subbots.js'
+
+import { processWelcome } from './lib/welcome.js'
 
 let restartingMainBot = false
 let subbotsLoaded = false
@@ -494,6 +495,32 @@ Introduce el código mostrado arriba.
         }
 
     }
+
+    // LISTENER PARA BIENVENIDAS Y DESPEDIDAS DE GRUPO
+    sock.ev.on(
+        'group-participants.update',
+        async update => {
+
+            try {
+
+                await processWelcome(
+                    sock,
+                    update
+                )
+
+            } catch (
+                error
+            ) {
+
+                console.error(
+                    '❌ Error procesando evento de grupo:',
+                    error
+                )
+
+            }
+
+        }
+    )
 
     sock.ev.on(
 
