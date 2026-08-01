@@ -53,7 +53,7 @@ export default {
                 '│ ❌ Responde a una *imagen* o *video* con el comando.\n' +
                 '│\n' +
                 '│ 📌 *Ejemplos de Uso:*\n' +
-                '│ • Responde a una imagen con `.s` (Usará el nombre de este Bot)\n' +
+                '│ • Responde a una imagen con `.s`\n' +
                 '│ • Responde a una imagen con `.s Pack Personalizado | Tu Nombre`\n' +
                 '╰──────────────'
             )
