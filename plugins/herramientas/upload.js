@@ -30,13 +30,10 @@ export default {
     ],
 
     async run(m, { conn, args }) {
-        // 1. Obtener el objeto del mensaje (si responde a uno o si es directo)
         const q = m.quoted ? m.quoted : m
         
-        // 2. Extraer de forma segura el objeto de mensaje real
         const rawMessage = q.message || q.msg || q
 
-        // 3. Detectar si contiene contenido multimedia
         const mime = (
             rawMessage.imageMessage?.mimetype ||
             rawMessage.videoMessage?.mimetype ||
@@ -71,10 +68,10 @@ export default {
         await m.reply('⏳ *Descargando archivo y procesando subida...*')
 
         try {
-            // 4. Descargar el archivo usando el método nativo de Baileys
+            
             let mediaBuffer
             try {
-                // Intentar primero con la función oficial de la librería
+                
                 mediaBuffer = await downloadMediaMessage(
                     q,
                     'buffer',
@@ -82,7 +79,7 @@ export default {
                     { logger: conn.logger, reuploadRequest: conn.updateMediaMessage }
                 )
             } catch (dlErr) {
-                // Métodos de respaldo en caso de estructuras de wrapper
+                
                 if (typeof q.download === 'function') {
                     mediaBuffer = await q.download()
                 } else if (typeof conn.downloadMediaMessage === 'function') {
@@ -97,8 +94,6 @@ export default {
             }
 
             const fileSize = mediaBuffer.length
-
-            // Subida a EvoGB
             async function uploadToEvo() {
                 if (fileSize > MAX_SIZE_EVO) {
                     throw new Error(`El archivo supera el límite de 150 MB de EvoGB. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
@@ -127,7 +122,6 @@ export default {
                 }
             }
 
-            // Subida a StellarWA
             async function uploadToStellar() {
                 if (fileSize > MAX_SIZE_STELLAR) {
                     throw new Error(`El archivo supera el límite de 40 MB de StellarWA. (${(fileSize / 1024 / 1024).toFixed(2)} MB)`)
