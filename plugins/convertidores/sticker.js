@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion local de stickers (imagenes y videos) usando fluent-ffmpeg
+ʚĭɞ ೃ funcion :: creacion local de stickers con metadatos EXIF compatibles con WhatsApp
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -29,52 +29,59 @@ async function streamToBuffer(stream) {
     return buffer
 }
 
-// Inyectar metadatos (Packname y Autor)
+// Inyectar metadatos EXIF compatibles con WhatsApp
 async function addExif(webpBuffer, packname, author) {
     const img = new webp.Image()
     await img.load(webpBuffer)
 
     const json = {
-        'sticker-pack-id': 'CuervoTeam',
+        'sticker-pack-id': 'https://github.com/CuervoTeam',
         'sticker-pack-name': packname,
         'sticker-pack-publisher': author,
         'emojis': ['🤖']
     }
 
-    const exifHeader = Buffer.from([0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
+    const exifHeader = Buffer.from([
+        0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0x49, 0x49, 0x2A, 0x00,
+        0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00
+    ])
+    
     const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf-8')
     const exif = Buffer.concat([exifHeader, jsonBuffer])
-    exif.writeUIntLE(jsonBuffer.length, 14, 4)
+    exif.writeUInt32LE(jsonBuffer.length, 14)
 
     img.exif = exif
     return await img.save(null)
 }
 
-// Conversión a .webp usando FFmpeg local
+// Conversión a WebP animado/estático optimizado para WhatsApp
 function convertToWebp(inputPath, isVideo) {
     return new Promise((resolve, reject) => {
         const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
         const options = isVideo
             ? [
                 '-vcodec', 'libwebp',
-                '-vf', 'scale=\'min(320,iw)\':\'min(320,ih)\':force_original_aspect_ratio=decrease,fps=15,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
                 '-loop', '0',
                 '-ss', '00:00:00',
                 '-t', '00:00:10',
                 '-preset', 'default',
                 '-an',
-                '-vsync', '0'
+                '-vsync', '0',
+                '-s', '512x512'
             ]
             : [
                 '-vcodec', 'libwebp',
-                '-vf', 'scale=\'min(512,iw)\':\'min(512,ih)\':force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000'
+                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-s', '512x512'
             ]
 
         ffmpeg(inputPath)
             .outputOptions(options)
             .toFormat('webp')
             .save(tmpOutput)
-            .on('end', async () => {
+            .on('end', () => {
                 try {
                     const resultBuffer = fs.readFileSync(tmpOutput)
                     if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
@@ -172,10 +179,10 @@ export default {
                 packname = text.trim()
             }
 
-            // Agregar EXIF / Metadatos
+            // Agregar EXIF / Metadatos corregidos
             const finalSticker = await addExif(webpBuffer, packname, author)
 
-            // Limpiar archivo temporal de entrada
+            // Limpiar archivo temporal
             if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
             return await conn.sendMessage(
