@@ -8,19 +8,15 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion de stickers usando la API Converter de EvoGB
+ʚĭɞ ೃ funcion :: creacion de stickers locales usando wa-sticker-formatter
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadContentFromMessage } from '@itsliaaa/baileys'
+import { Sticker, StickerTypes } from 'wa-sticker-formatter'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
-
-const EVO_KEY = 'evogb-WzR3kPpa'
-const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
-const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
-const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
 
 async function streamToBuffer(stream) {
     let buffer = Buffer.alloc(0)
@@ -68,10 +64,14 @@ export default {
             return m.reply('❌ El video no puede durar más de 10 segundos.')
         }
 
-        await m.reply('⏳ *Creando sticker...*')
+        await m.reply(
+            '╭━━━〔 ⏳ *GENERANDO* 〕━━━⬣\n' +
+            '┃ 🖼️ Procesando sticker localmente...\n' +
+            '╰━━━━━━━━━━━━━━━━━━━━⬣'
+        )
 
         try {
-        
+            
             let mediaBuffer
             try {
                 const streamType = mime.split('/')[0]
@@ -87,53 +87,6 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
-            let mediaUrl = ''
-
-            try {
-                const formData = new FormData()
-                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
-                const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${ext}`)
-
-                const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.status && json.url) {
-                    mediaUrl = json.url
-                } else {
-                    throw new Error('Falló subida a EvoGB')
-                }
-            } catch (evoErr) {
-                console.log('⚠️ EvoGB upload falló. Probando StellarWA...', evoErr.message)
-
-                const formData = new FormData()
-                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
-                const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${ext}`)
-
-                const res = await fetch(STELLAR_UPLOAD_API, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.success && json.file?.publicUrl) {
-                    mediaUrl = json.file.publicUrl
-                } else {
-                    throw new Error('Los dos servidores de subida fallaron.')
-                }
-            }
-
-            const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=webp&key=${EVO_KEY}`
-            
-            const webpRes = await fetch(convertUrl)
-            if (!webpRes.ok) {
-                throw new Error(`La API Converter devolvió status ${webpRes.status}`)
-            }
-
-            const webpBuffer = Buffer.from(await webpRes.arrayBuffer())
-
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -146,21 +99,30 @@ export default {
                 packname = text.trim()
             }
 
-            await conn.sendMessage(
+            const isVideo = mime.startsWith('video')
+            const sticker = new Sticker(mediaBuffer, {
+                pack: packname,
+                author: author,
+                type: StickerTypes.FULL,
+                quality: isVideo ? 60 : 90 
+            })
+
+            const stickerBuffer = await sticker.toBuffer()
+
+            return await conn.sendMessage(
                 m.chat,
-                {
-                    sticker: webpBuffer,
-                    packname: packname,
-                    author: author
-                },
+                { sticker: stickerBuffer },
                 { quoted: m }
             )
 
         } catch (error) {
             console.error('❌ Error en sticker.js:', error)
             return m.reply(
-                '❌ Hubo un error al convertir el archivo a sticker.\n\n' +
-                `📄 Detalle: ${error.message || error}`
+                '╭─「 ❌ *ERROR EN STICKER* 」\n' +
+                '│\n' +
+                '│ Hubo un error al convertir el archivo a sticker.\n' +
+                `│ 📄 Detalle: ${error.message || error}\n` +
+                '╰──────────────'
             )
         }
     }
