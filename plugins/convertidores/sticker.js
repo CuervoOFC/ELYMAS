@@ -7,21 +7,20 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ crumb codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion de stickers con node-webpmux (sin dependencias C++)
+ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
+ʚĭɞ ೃ funcion :: creacion local de stickers (imagenes y videos) usando fluent-ffmpeg
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadContentFromMessage } from '@itsliaaa/baileys'
+import ffmpeg from 'fluent-ffmpeg'
 import webp from 'node-webpmux'
+import fs from 'fs'
+import path from 'path'
+import { os } from 'os'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
-
-const EVO_KEY = 'evogb-WzR3kPpa'
-const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
-const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
-const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
 
 async function streamToBuffer(stream) {
     let buffer = Buffer.alloc(0)
@@ -31,6 +30,7 @@ async function streamToBuffer(stream) {
     return buffer
 }
 
+// Inyectar metadatos (Packname y Autor)
 async function addExif(webpBuffer, packname, author) {
     const img = new webp.Image()
     await img.load(webpBuffer)
@@ -49,6 +49,46 @@ async function addExif(webpBuffer, packname, author) {
 
     img.exif = exif
     return await img.save(null)
+}
+
+// Conversión a .webp usando FFmpeg local
+function convertToWebp(inputPath, isVideo) {
+    return new Promise((resolve, reject) => {
+        const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
+        const options = isVideo
+            ? [
+                '-vcodec', 'libwebp',
+                '-vf', 'scale=\'min(320,iw)\':\'min(320,ih)\':force_original_aspect_ratio=decrease,fps=15,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-loop', '0',
+                '-ss', '00:00:00',
+                '-t', '00:00:10',
+                '-preset', 'default',
+                '-an',
+                '-vsync', '0'
+            ]
+            : [
+                '-vcodec', 'libwebp',
+                '-vf', 'scale=\'min(512,iw)\':\'min(512,ih)\':force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000'
+            ]
+
+        ffmpeg(inputPath)
+            .outputOptions(options)
+            .toFormat('webp')
+            .save(tmpOutput)
+            .on('end', async () => {
+                try {
+                    const resultBuffer = fs.readFileSync(tmpOutput)
+                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                    resolve(resultBuffer)
+                } catch (err) {
+                    reject(err)
+                }
+            })
+            .on('error', (err) => {
+                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                reject(err)
+            })
+    })
 }
 
 export default {
@@ -89,7 +129,13 @@ export default {
             return m.reply('❌ El video no puede durar más de 10 segundos.')
         }
 
-        await m.reply('⏳ *Creando sticker...*')
+        await m.reply('⏳ *Procesando sticker localmente...*')
+
+        const tmpDir = path.join(process.cwd(), 'tmp')
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
+
+        const ext = mime.split('/')[1]?.split(';')[0] || 'tmp'
+        const tmpInput = path.join(tmpDir, `${Date.now()}_in.${ext}`)
 
         try {
             let mediaBuffer
@@ -107,45 +153,14 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
-            let mediaUrl = ''
+            // Guardar archivo temporal de entrada
+            fs.writeFileSync(tmpInput, mediaBuffer)
 
-            // Subida a servidor para conversión limpia
-            try {
-                const formData = new FormData()
-                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
-                const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${ext}`)
+            // Convertir con FFmpeg local
+            const isVideo = mime.startsWith('video')
+            const webpBuffer = await convertToWebp(tmpInput, isVideo)
 
-                const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.status && json.url) mediaUrl = json.url
-                else throw new Error('Falló subida a EvoGB')
-            } catch (evoErr) {
-                const formData = new FormData()
-                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
-                const blob = new Blob([mediaBuffer], { type: mime })
-                formData.append('file', blob, `file.${ext}`)
-
-                const res = await fetch(STELLAR_UPLOAD_API, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.success && json.file?.publicUrl) mediaUrl = json.file.publicUrl
-                else throw new Error('Los servidores de subida fallaron.')
-            }
-
-            // Convertir a WebP con la API Converter
-            const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=webp&key=${EVO_KEY}`
-            const webpRes = await fetch(convertUrl)
-            if (!webpRes.ok) throw new Error(`La API Converter devolvió status ${webpRes.status}`)
-
-            const rawWebpBuffer = Buffer.from(await webpRes.arrayBuffer())
-
-            // Procesar metadatos de packname / autor
+            // Procesar packname y author
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -158,16 +173,20 @@ export default {
                 packname = text.trim()
             }
 
-            // Inyectar metadatos con node-webpmux
-            const finalStickerBuffer = await addExif(rawWebpBuffer, packname, author)
+            // Agregar EXIF / Metadatos
+            const finalSticker = await addExif(webpBuffer, packname, author)
+
+            // Limpiar archivo temporal de entrada
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
             return await conn.sendMessage(
                 m.chat,
-                { sticker: finalStickerBuffer },
+                { sticker: finalSticker },
                 { quoted: m }
             )
 
         } catch (error) {
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
             console.error('❌ Error en sticker.js:', error)
             return m.reply(
                 '❌ Hubo un error al convertir el archivo a sticker.\n\n' +
