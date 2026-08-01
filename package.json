@@ -35,6 +35,8 @@
     "wa-sticker-formatter": "*",
     "node-webpmux": "*",
     "fluent-ffmpeg": "*",
+    "os": "*",
+    "fs": "*",
     "pino": "^9.7.0"
   },
   "engines": {
