@@ -29,6 +29,7 @@ function extractPureNumber(target) {
 
 export default {
     command: [
+        'fix',
         'update',
         'actualizar',
         'gitpull'
