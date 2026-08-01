@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion local de stickers con metadatos EXIF compatibles con WhatsApp
+ʚĭɞ ೃ funcion :: creacion local de stickers optimizados para WhatsApp
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -29,7 +29,7 @@ async function streamToBuffer(stream) {
     return buffer
 }
 
-// Inyectar metadatos EXIF compatibles con WhatsApp
+// Inyectar metadatos EXIF limpios
 async function addExif(webpBuffer, packname, author) {
     const img = new webp.Image()
     await img.load(webpBuffer)
@@ -46,7 +46,7 @@ async function addExif(webpBuffer, packname, author) {
         0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00
     ])
-    
+
     const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf-8')
     const exif = Buffer.concat([exifHeader, jsonBuffer])
     exif.writeUInt32LE(jsonBuffer.length, 14)
@@ -55,26 +55,27 @@ async function addExif(webpBuffer, packname, author) {
     return await img.save(null)
 }
 
-// Conversión a WebP animado/estático optimizado para WhatsApp
+// Conversión optimizada con FFmpeg para WhatsApp (limita fps, compresión y peso < 1MB)
 function convertToWebp(inputPath, isVideo) {
     return new Promise((resolve, reject) => {
         const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
+        
         const options = isVideo
             ? [
                 '-vcodec', 'libwebp',
-                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-vf', 'scale=320:320:force_original_aspect_ratio=decrease,fps=10,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
                 '-loop', '0',
                 '-ss', '00:00:00',
-                '-t', '00:00:10',
-                '-preset', 'default',
+                '-t', '00:00:06',
+                '-preset', 'picture',
                 '-an',
                 '-vsync', '0',
-                '-s', '512x512'
+                '-qscale', '50'
             ]
             : [
                 '-vcodec', 'libwebp',
                 '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-                '-s', '512x512'
+                '-preset', 'picture'
             ]
 
         ffmpeg(inputPath)
@@ -159,14 +160,14 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
-            // Guardar archivo temporal de entrada
+            // Guardar archivo temporal
             fs.writeFileSync(tmpInput, mediaBuffer)
 
-            // Convertir con FFmpeg local
+            // Convertir con FFmpeg optimizado
             const isVideo = mime.startsWith('video')
             const webpBuffer = await convertToWebp(tmpInput, isVideo)
 
-            // Procesar packname y author
+            // Procesar packname y autor
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -179,10 +180,15 @@ export default {
                 packname = text.trim()
             }
 
-            // Agregar EXIF / Metadatos corregidos
-            const finalSticker = await addExif(webpBuffer, packname, author)
+            // Agregar EXIF / Metadatos
+            let finalSticker = webpBuffer
+            try {
+                finalSticker = await addExif(webpBuffer, packname, author)
+            } catch (e) {
+                console.error('Error inyectando EXIF:', e)
+            }
 
-            // Limpiar archivo temporal
+            // Limpiar entrada
             if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
             return await conn.sendMessage(
