@@ -152,7 +152,6 @@ export default {
 
             let fileData = null
 
-            // Lógica de Servidores y Respaldo
             if (selectedServer === 2) {
                 fileData = await uploadToStellar()
             } else {
