@@ -23,13 +23,9 @@ const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 
 const MAX_SIZE_MB = 45
 
-/**
- * Sube la imagen usando los hostings nativos del bot (EvoGB / StellarWA)
- */
 async function uploadMedia(mediaBuffer, mime) {
     const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
     
-    // 1. Intentar subir primero a EvoGB
     try {
         const formData = new FormData()
         const blob = new Blob([mediaBuffer], { type: mime })
@@ -48,7 +44,6 @@ async function uploadMedia(mediaBuffer, mime) {
         console.log('⚠️ Error subiendo a EvoGB en remini, intentando StellarWA...', e.message)
     }
 
-    // 2. Respaldo en StellarWA Hosting
     const formData = new FormData()
     const blob = new Blob([mediaBuffer], { type: mime })
     formData.append('file', blob, `file.${ext}`)
@@ -93,10 +88,15 @@ export default {
             )
         }
 
-        await m.reply('⏳ *Descargando e iniciando proceso de subida y mejora...*')
+        await m.reply(
+            '╭━━━〔 ⏳ *PROCESANDO* 〕━━━⬣\n' +
+            '┃ 📥 Descargando imagen...\n' +
+            '┃ ☁️ Subiendo y mejorando calidad...\n' +
+            '╰━━━━━━━━━━━━━━━━━━━━⬣'
+        )
 
         try {
-            // 1. Descargar Buffer usando Baileys
+            
             let mediaBuffer
             try {
                 mediaBuffer = await downloadMediaMessage(
@@ -119,16 +119,19 @@ export default {
                 throw new Error('No se pudo descargar la imagen.')
             }
 
-            // Validar límite máximo de 45 MB
             const fileSizeMB = mediaBuffer.length / (1024 * 1024)
             if (fileSizeMB > MAX_SIZE_MB) {
-                return m.reply(`⚠️ La imagen supera el límite máximo de ${MAX_SIZE_MB} MB. (${fileSizeMB.toFixed(2)} MB)`)
+                return m.reply(
+                    '╭─「 ⚠️ *ERROR DE TAMAÑO* 」\n' +
+                    '│\n' +
+                    `│ La imagen supera el límite máximo de ${MAX_SIZE_MB} MB.\n` +
+                    `│ 📦 *Tamaño actual:* ${fileSizeMB.toFixed(2)} MB\n` +
+                    '╰──────────────'
+                )
             }
 
-            // 2. Subir imagen a la nube
             const uploadedUrl = await uploadMedia(mediaBuffer, mime)
 
-            // Detectar si el usuario usó `, 1` o `, 2`
             const text = args.join(' ')
             let selectedOption = 0
             if (text.includes('1')) selectedOption = 1
@@ -137,7 +140,6 @@ export default {
             let resultBuffer = null
             let methodUsed = ''
 
-            // --- MÉTODO 1 (EvoGB Upscale) ---
             if (selectedOption === 1 || selectedOption === 0) {
                 try {
                     const evoApi = `https://api.evogb.org/tools/upscale?method=url&url=${encodeURIComponent(uploadedUrl)}&key=${EVO_KEY}`
@@ -154,7 +156,6 @@ export default {
                 }
             }
 
-            // --- MÉTODO 2 (StellarWA Upscale) ---
             if (!resultBuffer && (selectedOption === 2 || selectedOption === 0)) {
                 try {
                     const stellarApi = `https://api.stellarwa.xyz/tools/upscale?method=url&url=${encodeURIComponent(uploadedUrl)}&scale=4&key=${STELLAR_KEY}`
@@ -175,10 +176,10 @@ export default {
                 throw new Error('No se pudo procesar la imagen en ninguna de las APIs de mejora.')
             }
 
-            // 3. Enviar mensaje de respuesta
             const captionText = 
-                '✨ *¡IMAGEN MEJORADA CON ÉXITO!*\n\n' +
-                `⚙️ Subida y mejorada : ${methodUsed}\n` +
+                '╭━━━〔 ✨ *REMINI UPSCALE* 〕━━━⬣\n' +
+                `┃ ⚙️ *Subida y mejorada:* ${methodUsed}\n` +
+                '╰━━━━━━━━━━━━━━━━━━━━⬣\n\n' +
                 `🔗 *URL Subida:* ${uploadedUrl}`
 
             return await conn.sendMessage(m.chat, {
@@ -189,8 +190,11 @@ export default {
         } catch (error) {
             console.error('❌ Error en Remini:', error)
             return m.reply(
-                '❌ Ocurrió un error al procesar la imagen.\n\n' +
-                `📄 ${error instanceof Error ? error.message : 'Error desconocido'}`
+                '╭─「 ❌ *ERROR EN REMINI* 」\n' +
+                '│\n' +
+                '│ Ocurrió un error al procesar la imagen.\n' +
+                `│ 📄 ${error instanceof Error ? error.message : 'Error desconocido'}\n` +
+                '╰──────────────'
             )
         }
     }
