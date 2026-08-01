@@ -8,14 +8,13 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion local de stickers optimizados para WhatsApp
+ʚĭɞ ೃ funcion :: creacion local de stickers con metadatos oficiales de Baileys
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadContentFromMessage } from '@itsliaaa/baileys'
 import ffmpeg from 'fluent-ffmpeg'
-import webp from 'node-webpmux'
 import fs from 'fs'
 import path from 'path'
 import config from '../../config.js'
@@ -29,33 +28,7 @@ async function streamToBuffer(stream) {
     return buffer
 }
 
-// Inyectar metadatos EXIF limpios
-async function addExif(webpBuffer, packname, author) {
-    const img = new webp.Image()
-    await img.load(webpBuffer)
-
-    const json = {
-        'sticker-pack-id': 'https://github.com/CuervoTeam',
-        'sticker-pack-name': packname,
-        'sticker-pack-publisher': author,
-        'emojis': ['🤖']
-    }
-
-    const exifHeader = Buffer.from([
-        0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0x49, 0x49, 0x2A, 0x00,
-        0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00
-    ])
-
-    const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf-8')
-    const exif = Buffer.concat([exifHeader, jsonBuffer])
-    exif.writeUInt32LE(jsonBuffer.length, 14)
-
-    img.exif = exif
-    return await img.save(null)
-}
-
-// Conversión optimizada con FFmpeg para WhatsApp (limita fps, compresión y peso < 1MB)
+// Conversión ultra limpia a WebP respetando los estándares de WhatsApp
 function convertToWebp(inputPath, isVideo) {
     return new Promise((resolve, reject) => {
         const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
@@ -67,15 +40,14 @@ function convertToWebp(inputPath, isVideo) {
                 '-loop', '0',
                 '-ss', '00:00:00',
                 '-t', '00:00:06',
-                '-preset', 'picture',
+                '-preset', 'default',
                 '-an',
-                '-vsync', '0',
-                '-qscale', '50'
+                '-vsync', '0'
             ]
             : [
                 '-vcodec', 'libwebp',
                 '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-                '-preset', 'picture'
+                '-preset', 'default'
             ]
 
         ffmpeg(inputPath)
@@ -163,7 +135,7 @@ export default {
             // Guardar archivo temporal
             fs.writeFileSync(tmpInput, mediaBuffer)
 
-            // Convertir con FFmpeg optimizado
+            // Convertir con FFmpeg a WebP puro
             const isVideo = mime.startsWith('video')
             const webpBuffer = await convertToWebp(tmpInput, isVideo)
 
@@ -180,20 +152,17 @@ export default {
                 packname = text.trim()
             }
 
-            // Agregar EXIF / Metadatos
-            let finalSticker = webpBuffer
-            try {
-                finalSticker = await addExif(webpBuffer, packname, author)
-            } catch (e) {
-                console.error('Error inyectando EXIF:', e)
-            }
-
             // Limpiar entrada
             if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
+            // Enviar pasando metadatos directamente a la API de Baileys
             return await conn.sendMessage(
                 m.chat,
-                { sticker: finalSticker },
+                { 
+                    sticker: webpBuffer,
+                    packname: packname,
+                    author: author
+                },
                 { quoted: m }
             )
 
