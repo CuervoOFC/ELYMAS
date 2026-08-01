@@ -7,16 +7,21 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion de stickers locales usando sticker-craft
-ʚĭɞ r estado :: completo
+ʚĭɞ crumb codigo :: plugins/convertidores/sticker.js
+ʚĭɞ ೃ funcion :: creacion de stickers con node-webpmux (sin dependencias C++)
+ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
 import { downloadContentFromMessage } from '@itsliaaa/baileys'
-import { Sticker } from 'sticker-craft'
+import webp from 'node-webpmux'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
+
+const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
+const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
+const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
 
 async function streamToBuffer(stream) {
     let buffer = Buffer.alloc(0)
@@ -24,6 +29,26 @@ async function streamToBuffer(stream) {
         buffer = Buffer.concat([buffer, chunk])
     }
     return buffer
+}
+
+async function addExif(webpBuffer, packname, author) {
+    const img = new webp.Image()
+    await img.load(webpBuffer)
+
+    const json = {
+        'sticker-pack-id': 'CuervoTeam',
+        'sticker-pack-name': packname,
+        'sticker-pack-publisher': author,
+        'emojis': ['🤖']
+    }
+
+    const exifHeader = Buffer.from([0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
+    const jsonBuffer = Buffer.from(JSON.stringify(json), 'utf-8')
+    const exif = Buffer.concat([exifHeader, jsonBuffer])
+    exif.writeUIntLE(jsonBuffer.length, 14, 4)
+
+    img.exif = exif
+    return await img.save(null)
 }
 
 export default {
@@ -64,11 +89,7 @@ export default {
             return m.reply('❌ El video no puede durar más de 10 segundos.')
         }
 
-        await m.reply(
-            '╭━━━〔 ⏳ *GENERANDO* 〕━━━⬣\n' +
-            '┃ 🖼️ Procesando sticker localmente...\n' +
-            '╰━━━━━━━━━━━━━━━━━━━━⬣'
-        )
+        await m.reply('⏳ *Creando sticker...*')
 
         try {
             let mediaBuffer
@@ -86,6 +107,45 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
+            let mediaUrl = ''
+
+            // Subida a servidor para conversión limpia
+            try {
+                const formData = new FormData()
+                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
+                const blob = new Blob([mediaBuffer], { type: mime })
+                formData.append('file', blob, `file.${ext}`)
+
+                const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                })
+                const json = await res.json()
+                if (json.status && json.url) mediaUrl = json.url
+                else throw new Error('Falló subida a EvoGB')
+            } catch (evoErr) {
+                const formData = new FormData()
+                const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
+                const blob = new Blob([mediaBuffer], { type: mime })
+                formData.append('file', blob, `file.${ext}`)
+
+                const res = await fetch(STELLAR_UPLOAD_API, {
+                    method: 'POST',
+                    body: formData
+                })
+                const json = await res.json()
+                if (json.success && json.file?.publicUrl) mediaUrl = json.file.publicUrl
+                else throw new Error('Los servidores de subida fallaron.')
+            }
+
+            // Convertir a WebP con la API Converter
+            const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=webp&key=${EVO_KEY}`
+            const webpRes = await fetch(convertUrl)
+            if (!webpRes.ok) throw new Error(`La API Converter devolvió status ${webpRes.status}`)
+
+            const rawWebpBuffer = Buffer.from(await webpRes.arrayBuffer())
+
+            // Procesar metadatos de packname / autor
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -98,28 +158,20 @@ export default {
                 packname = text.trim()
             }
 
-            const sticker = new Sticker(mediaBuffer, {
-                pack: packname,
-                author: author,
-                type: 'full'
-            })
-
-            const stickerBuffer = await sticker.toBuffer()
+            // Inyectar metadatos con node-webpmux
+            const finalStickerBuffer = await addExif(rawWebpBuffer, packname, author)
 
             return await conn.sendMessage(
                 m.chat,
-                { sticker: stickerBuffer },
+                { sticker: finalStickerBuffer },
                 { quoted: m }
             )
 
         } catch (error) {
             console.error('❌ Error en sticker.js:', error)
             return m.reply(
-                '╭─「 ❌ *ERROR EN STICKER* 」\n' +
-                '│\n' +
-                '│ Hubo un error al convertir el archivo a sticker.\n' +
-                `│ 📄 Detalle: ${error.message || error}\n` +
-                '╰──────────────'
+                '❌ Hubo un error al convertir el archivo a sticker.\n\n' +
+                `📄 Detalle: ${error.message || error}`
             )
         }
     }
