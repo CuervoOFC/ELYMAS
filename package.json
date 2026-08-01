@@ -33,7 +33,7 @@
     "@itsliaaa/baileys": "latest",
     "node-cache": "*",
     "wa-sticker-formatter": "*",
-    "sticker-craft": "*",
+    "node-webpmux": "*",
     "fluent-ffmpeg": "*",
     "pino": "^9.7.0"
   },
