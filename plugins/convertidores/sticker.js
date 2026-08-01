@@ -18,7 +18,6 @@ import ffmpeg from 'fluent-ffmpeg'
 import webp from 'node-webpmux'
 import fs from 'fs'
 import path from 'path'
-import { os } from 'os'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
