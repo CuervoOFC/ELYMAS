@@ -28,7 +28,6 @@ async function streamToBuffer(stream) {
     return buffer
 }
 
-// Conversión ultra limpia a WebP respetando los estándares de WhatsApp
 function convertToWebp(inputPath, isVideo) {
     return new Promise((resolve, reject) => {
         const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
@@ -132,14 +131,11 @@ export default {
                 throw new Error('No se pudo extraer el archivo multimedia.')
             }
 
-            // Guardar archivo temporal
             fs.writeFileSync(tmpInput, mediaBuffer)
 
-            // Convertir con FFmpeg a WebP puro
             const isVideo = mime.startsWith('video')
             const webpBuffer = await convertToWebp(tmpInput, isVideo)
 
-            // Procesar packname y autor
             const text = args.join(' ')
             let packname = defaultPackname
             let author = defaultAuthor
@@ -152,10 +148,8 @@ export default {
                 packname = text.trim()
             }
 
-            // Limpiar entrada
             if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
-            // Enviar pasando metadatos directamente a la API de Baileys
             return await conn.sendMessage(
                 m.chat,
                 { 
