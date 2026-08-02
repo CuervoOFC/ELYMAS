@@ -107,7 +107,7 @@ export default {
             return m.reply('❌ El video no puede durar más de 10 segundos.')
         }
 
-        await m.reply('⏳ *Procesando sticker localmente...*')
+        await m.reply('⏳ *Procesando sticker...*')
 
         const tmpDir = path.join(process.cwd(), 'tmp')
         if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
