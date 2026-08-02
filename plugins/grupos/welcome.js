@@ -18,12 +18,31 @@ import { getGroup, getGroups, saveGroups } from '../../lib/database.js'
 export default {
     command: ['welcome', 'bienvenida'],
 
-    async run(m, { args, isAdmin }) {
+    async run(m, { conn, args, isOwner }) {
         if (!m.isGroup) {
             return m.reply('❌ Este comando solo se puede usar en grupos.')
         }
 
-        if (!isAdmin) {
+        // --- VERIFICACIÓN DE ADMINS EN TIEMPO REAL ---
+        let isAdmin = false
+        try {
+            const groupMetadata = await conn.groupMetadata(m.chat)
+            const participants = groupMetadata.participants || []
+            
+            // Obtener el ID limpio del usuario que envió el mensaje
+            const senderJid = m.sender || m.key.participant
+
+            // Buscar al participante y verificar si es superadmin o admin
+            const userParticipant = participants.find(p => p.id === senderJid || p.jid === senderJid)
+            if (userParticipant && (userParticipant.admin === 'admin' || userParticipant.admin === 'superadmin')) {
+                isAdmin = true
+            }
+        } catch (e) {
+            console.error('Error al obtener la metadata del grupo:', e)
+        }
+
+        // Permitir si es Admin del grupo o Creador/Owner del Bot
+        if (!isAdmin && !isOwner) {
             return m.reply('❌ Este comando solo puede ser utilizado por los *Administradores* del grupo.')
         }
 
