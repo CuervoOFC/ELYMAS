@@ -18,7 +18,6 @@ import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-// Función para mapear iconos según el nombre de la carpeta
 function getCategoryIcon(category) {
     const icons = {
         'general': '⚙️',
@@ -46,11 +45,9 @@ export default {
         const ownerName = botData.ownerName || config.ownerName || 'TheDevil'
         const botImage = botData.image
 
-        // Ruta de la carpeta plugins
         const pluginsDir = path.join(process.cwd(), 'plugins')
         const categories = {}
 
-        // Lectura dinámica de carpetas y comandos
         try {
             const folders = fs.readdirSync(pluginsDir)
 
@@ -63,7 +60,6 @@ export default {
                     for (const file of files) {
                         const filePath = path.join(folderPath, file)
                         try {
-                            // Importar plugin para extraer sus comandos
                             const pluginModule = await import(`file://${filePath}`)
                             const plugin = pluginModule.default || pluginModule
 
@@ -72,14 +68,12 @@ export default {
                                     categories[folder] = []
                                 }
 
-                                // Si 'command' es un Array tomamos el primero, si es String lo usamos directo
                                 const mainCmd = Array.isArray(plugin.command) ? plugin.command[0] : plugin.command
                                 if (mainCmd) {
                                     categories[folder].push(mainCmd)
                                 }
                             }
                         } catch (e) {
-                            // En caso de que un plugin tenga error sintáctico, lo salta sin romper el menú
                             console.error(`Error al cargar el plugin ${file} para el menú:`, e)
                         }
                     }
@@ -89,7 +83,6 @@ export default {
             console.error('Error al leer el directorio de plugins:', e)
         }
 
-        // Construir encabezado
         let menuText = `╭━━━━━━━━━━━━━━━━━━╮\n`
         menuText += `┃ *${botName.toUpperCase()}*\n`
         menuText += `╰━━━━━━━━━━━━━━━━━━╯\n\n`
@@ -100,7 +93,6 @@ export default {
         menuText += `│ 🔧 Versión: ${config.version || '1.0.0'}\n`
         menuText += `╰──────────────\n\n`
 
-        // Construir secciones dinámicamente según las carpetas
         for (const [category, commands] of Object.entries(categories)) {
             if (commands.length === 0) continue
 
@@ -115,8 +107,6 @@ export default {
         }
 
         menuText += ` *${botName.toUpperCase()}*`
-
-        // Envío de respuesta (con o sin imagen)
         if (botImage) {
             await conn.sendMessage(m.chat, {
                 image: { url: botImage },
