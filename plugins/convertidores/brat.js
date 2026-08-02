@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/brat.js
-ʚĭɞ ೃ funcion :: generar sticker brat con conversion ffmpeg local
+ʚĭɞ ೃ funcion :: generar sticker brat con conversion ffmpeg local y API de respaldo
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -20,6 +20,7 @@ import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 const EVO_KEY = 'evogb-WzR3kPpa'
+const STELLAR_KEY = 'api-COTah'
 
 function convertToWebp(inputPath) {
     return new Promise((resolve, reject) => {
@@ -86,16 +87,38 @@ export default {
         const tmpInput = path.join(tmpDir, `${Date.now()}_brat.png`)
 
         try {
-            const bratApi = `https://api.evogb.org/tools/brat?text=${encodeURIComponent(txt)}&animated=false&key=${EVO_KEY}`
-            const bratRes = await fetch(bratApi)
+            let mediaBuffer = null
 
-            if (!bratRes.ok) throw new Error('Error al conectar con la API de Brat.')
+            try {
+                const evoApi = `https://api.evogb.org/tools/brat?text=${encodeURIComponent(txt)}&animated=false&key=${EVO_KEY}`
+                const res = await fetch(evoApi)
+                if (res.ok) {
+                    mediaBuffer = Buffer.from(await res.arrayBuffer())
+                }
+            } catch (e) {
+                console.error('Fallo API EvoGB Brat, probando respaldo Stellar...', e)
+            }
 
-            const mediaBuffer = Buffer.from(await bratRes.arrayBuffer())
+            if (!mediaBuffer) {
+                try {
+                    const stellarApi = `https://api.stellarwa.xyz/tools/brat?text=${encodeURIComponent(txt)}&key=${STELLAR_KEY}`
+                    const res = await fetch(stellarApi)
+                    if (res.ok) {
+                        mediaBuffer = Buffer.from(await res.arrayBuffer())
+                    }
+                } catch (e) {
+                    console.error('Fallo API Stellar Brat...', e)
+                }
+            }
+
+            if (!mediaBuffer) {
+                throw new Error('No se pudo obtener la imagen de Brat desde los servidores.')
+            }
+
             fs.writeFileSync(tmpInput, mediaBuffer)
 
             const webpBuffer = await convertToWebp(tmpInput)
-
+            
             if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
             return await conn.sendMessage(
