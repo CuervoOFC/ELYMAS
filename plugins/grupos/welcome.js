@@ -18,9 +18,13 @@ import { getGroup, getGroups, saveGroups } from '../../lib/database.js'
 export default {
     command: ['welcome', 'bienvenida'],
 
-    async run(m, { args }) {
+    async run(m, { args, isAdmin }) {
         if (!m.isGroup) {
             return m.reply('❌ Este comando solo se puede usar en grupos.')
+        }
+
+        if (!isAdmin) {
+            return m.reply('❌ Este comando solo puede ser utilizado por los *Administradores* del grupo.')
         }
 
         const option = args[0]?.toLowerCase()
