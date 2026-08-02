@@ -8,18 +8,46 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/convertidores/brat.js
-ʚĭɞ ೃ funcion :: generar sticker brat estático usando el conversor oficial
+ʚĭɞ ೃ funcion :: generar sticker brat con conversion ffmpeg local
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
+import ffmpeg from 'fluent-ffmpeg'
+import fs from 'fs'
+import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 const EVO_KEY = 'evogb-WzR3kPpa'
-const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
-const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
-const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
+
+function convertToWebp(inputPath) {
+    return new Promise((resolve, reject) => {
+        const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
+
+        ffmpeg(inputPath)
+            .outputOptions([
+                '-vcodec', 'libwebp',
+                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+                '-preset', 'default'
+            ])
+            .toFormat('webp')
+            .save(tmpOutput)
+            .on('end', () => {
+                try {
+                    const resultBuffer = fs.readFileSync(tmpOutput)
+                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                    resolve(resultBuffer)
+                } catch (err) {
+                    reject(err)
+                }
+            })
+            .on('error', (err) => {
+                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                reject(err)
+            })
+    })
+}
 
 export default {
     command: ['brat'],
@@ -52,53 +80,36 @@ export default {
             '╰━━━━━━━━━━━━━━━━━━━━⬣'
         )
 
+        const tmpDir = path.join(process.cwd(), 'tmp')
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
+
+        const tmpInput = path.join(tmpDir, `${Date.now()}_brat.png`)
+
         try {
             const bratApi = `https://api.evogb.org/tools/brat?text=${encodeURIComponent(txt)}&animated=false&key=${EVO_KEY}`
             const bratRes = await fetch(bratApi)
+
             if (!bratRes.ok) throw new Error('Error al conectar con la API de Brat.')
-            
+
             const mediaBuffer = Buffer.from(await bratRes.arrayBuffer())
+            fs.writeFileSync(tmpInput, mediaBuffer)
 
-            let mediaUrl = ''
-            try {
-                const formData = new FormData()
-                const blob = new Blob([mediaBuffer], { type: 'image/png' })
-                formData.append('file', blob, 'brat.png')
+            const webpBuffer = await convertToWebp(tmpInput)
 
-                const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.status && json.url) mediaUrl = json.url
-                else throw new Error()
-            } catch {
-                const formData = new FormData()
-                const blob = new Blob([mediaBuffer], { type: 'image/png' })
-                formData.append('file', blob, 'brat.png')
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
 
-                const res = await fetch(STELLAR_UPLOAD_API, {
-                    method: 'POST',
-                    body: formData
-                })
-                const json = await res.json()
-                if (json.success && json.file?.publicUrl) mediaUrl = json.file.publicUrl
-                else throw new Error('Falló la subida en ambos servidores.')
-            }
-
-            const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=webp&key=${EVO_KEY}`
-            const webpRes = await fetch(convertUrl)
-            if (!webpRes.ok) throw new Error('Error en el conversor de stickers.')
-
-            const webpBuffer = Buffer.from(await webpRes.arrayBuffer())
-
-            return await conn.sendMessage(m.chat, {
-                sticker: webpBuffer,
-                packname: defaultPackname,
-                author: defaultAuthor
-            }, { quoted: m })
+            return await conn.sendMessage(
+                m.chat,
+                {
+                    sticker: webpBuffer,
+                    packname: defaultPackname,
+                    author: defaultAuthor
+                },
+                { quoted: m }
+            )
 
         } catch (error) {
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
             console.error('❌ Error en Brat:', error)
             return m.reply(
                 '╭─「 ❌ *ERROR EN BRAT* 」\n' +
