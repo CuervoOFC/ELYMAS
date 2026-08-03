@@ -118,6 +118,7 @@ export default {
                     caption: menuText,
                     ptv: true
                 }, { quoted: m })
+                await m.reply(menuText)
             } else {
                 await conn.sendMessage(m.chat, {
                     image: { url: mediaUrl },
