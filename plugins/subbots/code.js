@@ -13,10 +13,9 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-
 import {
     initializeSubBot,
-    getSubBot
+    stopSubBot
 } from '../../lib/subbots.js'
 
 export default {
@@ -42,18 +41,14 @@ export default {
 
         const jid = `${numero}@s.whatsapp.net`
 
-        const existing = getSubBot(jid)
-
-        if (existing && existing.connected) {
-            return m.reply('⚠️ Este número ya tiene un subbot conectado.')
-        }
-
         await m.reply(
             '⏳ Preparando el subbot...\n\n' +
             'Espera unos segundos mientras se genera el código.'
         )
 
         try {
+            // Detener cualquier instancia o reconexión previa del número si estaba colgada/desconectada
+            await stopSubBot(jid)
 
             const result = await initializeSubBot(
                 jid,
@@ -79,7 +74,7 @@ export default {
                 `2️⃣ Ve a *Ajustes*\n` +
                 `3️⃣ Entra en *Dispositivos vinculados*\n` +
                 `4️⃣ Pulsa *Vincular un dispositivo*\n` +
-                `5️⃣ Selecciona *Vincular con número de teléfono*\n` +
+                `5️⃣ Selecciona *Vincular con el número de teléfono*\n` +
                 `6️⃣ Introduce el código anterior\n\n` +
                 `⚠️ El código puede tardar unos segundos en funcionar.`
             )
