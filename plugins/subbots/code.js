@@ -8,14 +8,17 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/subbots/code.js
-ʚĭɞ ೃ funcion :: generar codigo para vinculacion de subbot
+ʚĭɞ ೃ funcion :: generar codigo para vinculacion de subbot con limpieza previa de sesion
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
+import fs from 'fs'
+import path from 'path'
 import {
     initializeSubBot,
-    stopSubBot
+    stopSubBot,
+    createSubBotDirectory
 } from '../../lib/subbots.js'
 
 export default {
@@ -47,9 +50,20 @@ export default {
         )
 
         try {
-            // Detener cualquier instancia o reconexión previa del número si estaba colgada/desconectada
+            // 1. Intentar detener cualquier proceso activo o colgado
             await stopSubBot(jid)
 
+            // 2. Limpiar las credenciales antiguas si la sesión dio error 401 (Unauthenticated)
+            const subbotFolder = createSubBotDirectory(jid)
+            if (fs.existsSync(subbotFolder)) {
+                try {
+                    fs.rmSync(subbotFolder, { recursive: true, force: true })
+                } catch (e) {
+                    console.error('Error al limpiar carpeta de subbot:', e)
+                }
+            }
+
+            // 3. Inicializar nuevamente generando el código
             const result = await initializeSubBot(
                 jid,
                 {
