@@ -18,10 +18,9 @@ export default {
         }
 
         try {
-            // Se obtiene la metadata del grupo
+            
             const groupMetadata = await conn.groupMetadata(m.chat)
             
-            // Solicitar código de invitación directamente
             const code = await conn.groupInviteCode(m.chat)
             const link = `https://chat.whatsapp.com/${code}`
 
