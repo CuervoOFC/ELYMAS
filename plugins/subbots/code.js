@@ -46,7 +46,6 @@ export default {
         )
 
         try {
-            // Borrar carpeta de sesión vieja si existía para forzar la generación de un nuevo código
             const safeJid = String(jid).replace(/[^a-zA-Z0-9_-]/g, '_')
             const subbotFolder = path.join(process.cwd(), 'database', 'subbots', safeJid)
             
@@ -57,8 +56,7 @@ export default {
                     console.error('Error limpiando carpeta vieja:', e)
                 }
             }
-
-            // Iniciar directamente la petición de código
+            
             const result = await initializeSubBot(
                 jid,
                 {
