@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/general/menu.js
-ʚĭɞ ೃ funcion :: menu dinamico con lectura automatica de plugins
+ʚĭɞ ೃ funcion :: menu dinamico con lectura automatica de plugins e imagenes/videos
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -43,7 +43,10 @@ export default {
 
         const botName = botData.name || config.botName || 'Cuervo'
         const ownerName = botData.ownerName || config.ownerName || 'TheDevil'
-        const botImage = botData.image
+        
+        // Obtenemos la media guardada (o fallback a la propiedad image antigua)
+        const mediaUrl = botData.mediaUrl || botData.image
+        const mediaType = botData.mediaType || (botData.image ? 'image' : null)
 
         const pluginsDir = path.join(process.cwd(), 'plugins')
         const categories = {}
@@ -107,11 +110,20 @@ export default {
         }
 
         menuText += ` *${botName.toUpperCase()}*`
-        if (botImage) {
-            await conn.sendMessage(m.chat, {
-                image: { url: botImage },
-                caption: menuText
-            }, { quoted: m })
+
+        if (mediaUrl) {
+            if (mediaType === 'video') {
+                await conn.sendMessage(m.chat, {
+                    video: { url: mediaUrl },
+                    caption: menuText,
+                    ptv: true
+                }, { quoted: m })
+            } else {
+                await conn.sendMessage(m.chat, {
+                    image: { url: mediaUrl },
+                    caption: menuText
+                }, { quoted: m })
+            }
         } else {
             await m.reply(menuText)
         }
