@@ -14,12 +14,8 @@ De Cuervo-Team-Supreme
 */
 
 import fs from 'fs'
-import {
-    initializeSubBot,
-    createSubBotDirectory,
-    STOPPED_SUBBOTS,
-    STARTING_SUBBOTS
-} from '../../lib/subbots.js'
+import path from 'path'
+import { initializeSubBot } from '../../lib/subbots.js'
 
 export default {
     command: [
@@ -50,16 +46,16 @@ export default {
         )
 
         try {
-            // Forzar limpieza de bloqueos en memoria si existían
-            if (STOPPED_SUBBOTS) STOPPED_SUBBOTS.delete(jid)
-            if (STARTING_SUBBOTS) STARTING_SUBBOTS.delete(jid)
-
-            // Borrar carpeta de sesión vieja si existía para que no interfiera
-            const subbotFolder = createSubBotDirectory(jid)
+            // Borrar carpeta de sesión vieja si existía para forzar la generación de un nuevo código
+            const safeJid = String(jid).replace(/[^a-zA-Z0-9_-]/g, '_')
+            const subbotFolder = path.join(process.cwd(), 'database', 'subbots', safeJid)
+            
             if (fs.existsSync(subbotFolder)) {
                 try {
                     fs.rmSync(subbotFolder, { recursive: true, force: true })
-                } catch (e) {}
+                } catch (e) {
+                    console.error('Error limpiando carpeta vieja:', e)
+                }
             }
 
             // Iniciar directamente la petición de código
