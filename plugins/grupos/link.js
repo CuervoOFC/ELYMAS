@@ -3,9 +3,9 @@
 Codigo Creado Por CUERVO-TEAM-SUPREME
 Para Elymas-Bot
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
-ʚĭɞ crumb codigo :: plugins/grupos/link.js
-ʚĭɞ 💤 funcion :: Generar y enviar el link de invitacion del grupo
+ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
+ʚĭɞ codigo :: plugins/grupos/link.js
+ʚĭɞ funcion :: Generar y enviar el link de invitacion del grupo
 ──────✧✦✧──────
 */
 
