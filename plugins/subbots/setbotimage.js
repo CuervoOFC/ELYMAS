@@ -8,42 +8,49 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/subbots/setbotimage.js
-ʚĭɞ ೃ funcion :: cambiar foto del bot 
+ʚĭɞ r funcion :: cambiar foto o video del bot 
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
 
-
 import { saveSubbotConfig, validateSubbotOwner } from '../../lib/subbotconfig.js'
 
 export default {
-    command: ['setbotimage', 'setimagebot', 'setbotfoto', 'setfoto'],
+    command: ['setbotimage', 'setimagebot', 'setbotfoto', 'setfoto', 'setbotvideo', 'setvideo'],
 
     async run(m, { conn, text }) {
         const auth = validateSubbotOwner(m, conn)
         if (!auth.allowed) return m.reply(auth.reason)
 
-        let imageUrl = ''
+        let mediaUrl = ''
 
         if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-            imageUrl = text.trim()
+            mediaUrl = text.trim()
         } 
-        else if (m.quoted && /image/.test(m.quoted.mtype || m.quoted.mediaType)) {
-            return m.reply('⚠️ Por favor pasa un enlace directo de imagen (Ej: de Imgur/Catbox) o usa una URL directa.')
+        else if (m.quoted && /image|video/.test(m.quoted.mtype || m.quoted.mediaType)) {
+            return m.reply('⚠️ Por favor pasa un enlace directo de la imagen o video (Ej: de Imgur/Catbox) o usa una URL directa.')
         }
 
-        if (!imageUrl) {
+        if (!mediaUrl) {
             return m.reply(
-                '❌ Debes ingresar una URL válida de imagen.\n\n' +
-                'Ejemplo:\n' +
-                '`.setbotimage https://i.imgur.com/ejemplo.jpg`'
+                '❌ Debes ingresar una URL válida de imagen o vídeo.\n\n' +
+                'Ejemplos:\n' +
+                '`.setbotimage https://i.imgur.com/ejemplo.jpg`\n' +
+                '`.setbotvideo https://files.catbox.moe/ejemplo.mp4`'
             )
         }
 
+        const isVideo = /\.(mp4|mov|avi|mkv|webm|gif)($|\?)/i.test(mediaUrl)
+        const mediaType = isVideo ? 'video' : 'image'
+
         const botJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid
 
-        saveSubbotConfig(botJid, { image: imageUrl })
+        saveSubbotConfig(botJid, { 
+            mediaUrl: mediaUrl,
+            mediaType: mediaType,
+            image: mediaUrl 
+        })
 
-        return m.reply(`✅ La imagen de este Subbot se ha actualizado correctamente.`)
+        return m.reply(`✅ El contenido multimedia (${mediaType.toUpperCase()}) de este Subbot se ha actualizado correctamente.`)
     }
 }
