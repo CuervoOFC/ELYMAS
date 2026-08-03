@@ -74,6 +74,7 @@ https://wa.me/${ownerNumber}
                         quoted: m
                     }
                 )
+                await m.reply(texto)
             } else {
                 await conn.sendMessage(
                     m.chat,
