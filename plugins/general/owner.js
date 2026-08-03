@@ -13,7 +13,6 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
@@ -45,7 +44,8 @@ export default {
             config.ownerNumber ||
             '886958381686'
 
-        const botImage = botData.image
+        const mediaUrl = botData.mediaUrl
+        const mediaType = botData.mediaType
 
         const texto = `
 ╭━━━━━━━━━━━━━━━━━━╮
@@ -60,20 +60,32 @@ ${ownerName}
 📱 Número:
 https://wa.me/${ownerNumber}
 `.trim()
-        
-        if (botImage) {
-            await conn.sendMessage(
-                m.chat,
-                {
-                    image: {
-                        url: botImage
+
+        if (mediaUrl) {
+            if (mediaType === 'video') {
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        video: { url: mediaUrl },
+                        caption: texto,
+                        ptv: true
                     },
-                    caption: texto
-                },
-                {
-                    quoted: m
-                }
-            )
+                    {
+                        quoted: m
+                    }
+                )
+            } else {
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        image: { url: mediaUrl },
+                        caption: texto
+                    },
+                    {
+                        quoted: m
+                    }
+                )
+            }
         } else {
             await m.reply(texto)
         }
