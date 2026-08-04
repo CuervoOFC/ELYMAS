@@ -8,8 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con resolucion perfecta de JID/LID sin errores de prefijo
-ʚĭɞ ೃ estado :: completo
+ʚĭɞ ೃ funcion :: comandos nsfw optimizado para @itsliaaa/baileys (resolucion LID/JID con findUserId)
 ──────✧✦✧──────
 */
 
@@ -21,8 +20,11 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Función para resolver JID real, LID y número evitando extraer dígitos de IDs internos
-function resolveParticipant(rawId, groupParticipants = []) {
+/**
+ * Resuelve el JID real (@s.whatsapp.net), LID (@lid) y el número telefónico
+ * Aprovecha sock.findUserId de @itsliaaa/baileys si no está en la metadata del grupo.
+ */
+async function resolveParticipant(rawId, conn, groupParticipants = []) {
     if (!rawId) return { jid: '', lid: '', number: '' }
 
     const str = String(typeof rawId === 'string' ? rawId : rawId?.id || rawId?.phoneNumber || '').split(':')[0]
@@ -31,23 +33,42 @@ function resolveParticipant(rawId, groupParticipants = []) {
 
     if (str.includes('@lid')) {
         lid = str
-        // Buscar el LID en los participantes del grupo para obtener su JID real
+        // 1. Buscar en participantes del grupo
         const found = groupParticipants.find(p => p.lid === str || p.id === str)
         if (found && found.id && found.id.includes('@s.whatsapp.net')) {
             jid = found.id.split(':')[0]
+        } 
+        // 2. Si no se encuentra en el grupo, usar findUserId() de @itsliaaa/baileys
+        else if (conn && typeof conn.findUserId === 'function') {
+            try {
+                const res = await conn.findUserId(str)
+                if (res?.phoneNumber) jid = res.phoneNumber
+            } catch (e) {
+                // Silenciar fallo si no se encuentra
+            }
         }
     } else if (str.includes('@s.whatsapp.net')) {
         jid = str
+        // 1. Buscar en participantes del grupo
         const found = groupParticipants.find(p => p.id === str || p.lid === str)
         if (found && found.lid) {
             lid = found.lid.split(':')[0]
+        }
+        // 2. Si no tiene LID en grupo, consultar findUserId() de @itsliaaa/baileys
+        else if (conn && typeof conn.findUserId === 'function') {
+            try {
+                const res = await conn.findUserId(str)
+                if (res?.lid) lid = res.lid
+            } catch (e) {
+                // Silenciar fallo
+            }
         }
     } else if (!str.includes('@')) {
         const clean = str.replace(/[^0-9]/g, '')
         if (clean) jid = `${clean}@s.whatsapp.net`
     }
 
-    // Extraer número REAL solo si tenemos un JID verdadero (@s.whatsapp.net)
+    // El número formateado para menciones (@123456) SOLO sale del JID real
     let number = ''
     if (jid && jid.includes('@s.whatsapp.net')) {
         number = jid.split('@')[0].replace(/[^0-9]/g, '')
@@ -131,11 +152,11 @@ export default {
             console.error('Error al obtener participantes del grupo:', e)
         }
 
-        // 1. Resolver emisor (remitente)
+        // 1. Resolver emisor (sender)
         const senderRaw = m.sender || m.key.participant || m.participant
-        const sender = resolveParticipant(senderRaw, groupParticipants)
+        const sender = await resolveParticipant(senderRaw, conn, groupParticipants)
 
-        // 2. Extraer el objetivo priorizando números directos del texto para evitar LIDs corruptos
+        // 2. Determinar/extraer objetivo
         let targetRaw = null
         let extractedNumber = ''
 
@@ -155,9 +176,9 @@ export default {
             }
         }
 
-        const target = resolveParticipant(targetRaw, groupParticipants)
+        // 3. Resolver objetivo asíncronamente aprovechando sock.findUserId
+        const target = await resolveParticipant(targetRaw, conn, groupParticipants)
 
-        // Asignación de respaldo si la metadata no halló el número pero se extrajo del texto
         if (!target.number && extractedNumber) {
             target.number = extractedNumber
             if (!target.jid) target.jid = `${extractedNumber}@s.whatsapp.net`
@@ -176,6 +197,7 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
+            // Agregar tanto JID como LID al array de menciones para compatibilidad total con Baileys
             const mentions = []
             if (sender.jid) mentions.push(sender.jid)
             if (sender.lid) mentions.push(sender.lid)
