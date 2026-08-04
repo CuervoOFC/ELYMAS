@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con videos/gifs
+ʚĭɞ ೃ funcion :: comandos nsfw con videos/gifs - menciones fix
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -17,12 +17,10 @@ import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 import { getGroup } from '../../lib/database.js'
 import axios from 'axios'
-import { proto } from '@itsliaaa/baileys'
 
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Mapeo de comandos a textos personalizados
 const commandTexts = {
     spank: { action: 'azotó', emoji: '👋' },
     undress: { action: 'desvistió', emoji: '👗' },
@@ -70,17 +68,14 @@ export default {
 
         const usedCommand = m.text.split(' ')[0].replace(/^[!#.]/, '').toLowerCase()
 
-        // Comando de lista
         if (usedCommand === 'nsfwlist' || usedCommand === 'listansfw') {
             return sendNsfwList(m, conn, botName)
         }
 
-        // Verificar grupo
         if (!m.isGroup) {
             return m.reply('⚠️ Los comandos NSFW solo funcionan en grupos.')
         }
 
-        // Verificar NSFW activado
         const groupData = getGroup(m.chat)
         if (!groupData.nsfw) {
             return m.reply(
@@ -93,20 +88,37 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        const sender = m.sender
-        const senderName = sender.split('@')[0]
+        // Obtener JIDs completos para menciones
+        const senderJid = m.sender
+        const senderNumber = senderJid.split('@')[0]
 
-        // Obtener usuario mencionado
-        let mentionedUser = m.mentionedJid && m.mentionedJid[0]
-        if (!mentionedUser && m.quoted) {
-            mentionedUser = m.quoted.sender
+        // Obtener usuario mencionado de diferentes fuentes
+        let targetJid = null
+        let targetNumber = null
+        
+        // 1. De mentionedJid (mención directa @usuario)
+        if (m.mentionedJid && m.mentionedJid.length > 0) {
+            targetJid = m.mentionedJid[0]
+            targetNumber = targetJid.split('@')[0]
+        }
+        // 2. De quoted message (respondiendo mensaje)
+        else if (m.quoted && m.quoted.sender) {
+            targetJid = m.quoted.sender
+            targetNumber = targetJid.split('@')[0]
+        }
+        // 3. De los argumentos del texto
+        else if (args.length > 0) {
+            // Buscar número en el texto (puede ser con @ o sin @)
+            const possibleNumber = args[0].replace(/[@\s]/g, '')
+            if (/^\d+$/.test(possibleNumber) && possibleNumber.length >= 10) {
+                targetJid = `${possibleNumber}@s.whatsapp.net`
+                targetNumber = possibleNumber
+            }
         }
 
-        // Enviar mensaje de carga
         await m.reply('🔞 Cargando contenido...')
 
         try {
-            // Llamar a la API para obtener el video/GIF
             const apiUrl = `${API_BASE_URL}?type=${usedCommand}&key=${API_KEY}`
             const response = await axios.get(apiUrl, { timeout: 15000 })
             
@@ -117,24 +129,26 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Construir mensaje de caption
+            // Construir caption con menciones visibles
             let captionText
-            if (mentionedUser) {
-                const targetName = mentionedUser.split('@')[0]
+            const mentions = [senderJid] // Siempre incluir al remitente
+            
+            if (targetJid) {
+                mentions.push(targetJid)
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${senderName} *${commandInfo.action}* @${targetName}\n\n` +
+                    `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* @${targetNumber}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             } else {
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${senderName} *${commandInfo.action}* alguien especial 😏\n\n` +
+                    `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* alguien especial 😏\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             }
 
-            // Descargar el video y enviarlo
+            // Descargar video
             const videoResponse = await axios.get(videoUrl, { 
                 responseType: 'arraybuffer',
                 timeout: 30000,
@@ -145,72 +159,36 @@ export default {
 
             const videoBuffer = Buffer.from(videoResponse.data, 'binary')
 
-            // Enviar video como GIF (ptvMessage - video que se ve como GIF)
+            // Enviar mensaje con menciones correctas
             await conn.sendMessage(m.chat, {
                 video: videoBuffer,
                 caption: captionText,
-                gifPlayback: true, // Se reproduce como GIF
-                mentions: mentionedUser ? [sender, mentionedUser] : [sender],
+                gifPlayback: true,
+                mentions: mentions, // Array de JIDs completos
                 mimetype: 'video/mp4'
             }, { quoted: m })
 
         } catch (error) {
-            console.error('Error NSFW API:', error.message)
-            
-            // Si falla, enviar mensaje de error
-            m.reply(
-                '❌ *Error al obtener el contenido*\n\n' +
-                '⚠️ La API no respondió o el video no está disponible.\n' +
-                'Inténtalo de nuevo más tarde.'
-            )
+            console.error('Error NSFW:', error)
+            m.reply('❌ Error al obtener el contenido. Inténtalo de nuevo.')
         }
     }
 }
 
-// Función para enviar la lista de comandos
 async function sendNsfwList(m, conn, botName) {
     const listText = 
-        `╭─「 🔞 *COMANDOS NSFW CON VIDEOS* 」\n` +
-        `│\n` +
-        `│ 📋 *Lista de interacciones:*\n` +
-        `│\n` +
-        `│ 👋 \`!spank\` ➔ Azotar\n` +
-        `│ 👗 \`!undress\` ➔ Desvestir\n` +
-        `│ 👭 \`!yuri\` ➔ Yuri/Lésbico\n` +
-        `│ 🔥 \`!sixnine\` ➔ 69\n` +
-        `│ 🍑 \`!anal\` ➔ Anal\n` +
-        `│ 💦 \`!fuck\` ➔ Coger\n` +
-        `│ 👄 \`!cummouth\` ➔ En la boca\n` +
-        `│ 🍒 \`!suckboobs\` ➔ Chupar tetas\n` +
-        `│ 💦 \`!cumshot\` ➔ Cumshot\n` +
-        `│ 👅 \`!lickpussy\` ➔ Lamer coño\n` +
-        `│ 👅 \`!lickdick\` ➔ Lamer verga\n` +
-        `│ 👅 \`!lickass\` ➔ Lamer culo\n` +
-        `│ ✊ \`!handjob\` ➔ Paja manual\n` +
-        `│ 🍑 \`!grope\` ➔ Agarrar nalgas\n` +
-        `│ 💦 \`!cum\` ➔ Venirse\n` +
-        `│ 🍒 \`!grabboobs\` ➔ Agarrar tetas\n` +
-        `│ 👄 \`!blowjob\` ➔ Oral\n` +
-        `│ 🍒 \`!boobjob\` ➔ Cubana\n` +
-        `│ ✊ \`!fap\` ➔ Masturbarse\n` +
-        `│ 🦶 \`!footjob\` ➔ Con los pies\n` +
-        `│ 👆 \`!fingering\` ➔ Meter dedos\n` +
-        `│ 🥧 \`!creampie\` ➔ Creampie\n` +
-        `│ 😮 \`!facesitting\` ➔ Facesitting\n` +
-        `│ 🍆 \`!futanari\` ➔ Futanari\n` +
-        `│ 🍆 \`!pegging\` ➔ Pegging\n` +
-        `│ ⛓️ \`!bondage\` ➔ Bondage\n` +
-        `│ 👄 \`!deepthroat\` ➔ Deepthroat\n` +
-        `│ 🦵 \`!thighjob\` ➔ Thighjob\n` +
-        `│ 👬 \`!yaoi\` ➔ Yaoi/Gay\n` +
-        `│ 💦 \`!bukkake\` ➔ Bukkake\n` +
-        `│ 🎉 \`!orgy\` ➔ Orgía\n` +
-        `│ 💧 \`!squirting\` ➔ Squirt\n` +
+        `╭─「 🔞 *COMANDOS NSFW* 」\n` +
         `│\n` +
         `│ 💡 *Uso:* \`!comando @usuario\`\n` +
-        `│ 🎬 *Formato:* Video/GIF\n` +
-        `│ 📝 *Total:* ${allCommands.length} comandos\n` +
         `│\n` +
+        `│ 🔥 Populares:\n` +
+        `│ • \`!cum\` - Venirse\n` +
+        `│ • \`!fuck\` - Coger\n` +
+        `│ • \`!anal\` - Anal\n` +
+        `│ • \`!blowjob\` - Oral\n` +
+        `│ • \`!sixnine\` - 69\n` +
+        `│\n` +
+        `│ 📝 Total: ${allCommands.length} comandos\n` +
         `│ 🤖 Bot: *${botName}*\n` +
         `╰──────────────`
 
