@@ -6,9 +6,9 @@ Exclusivo Y Unico Para Este Bot Al
 Clonar O Copiar Dejar Estos Creditos 
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ tz
+ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con resolucion compatible de LID/JID
+ʚĭɞ r funcion :: comandos nsfw con resolucion perfecta de JID/LID igual a welcome.js
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -21,23 +21,24 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Resuelve y devuelve tanto el JID real como el LID y el número limpio
-function resolveUser(rawJid, participants = []) {
-    if (!rawJid) return { jid: '', lid: '', number: '' }
-    
-    const str = String(rawJid).split(':')[0]
+// Lógica idéntica a lib/welcome.js para resolver JID real, LID y número
+function resolveParticipant(rawId, groupParticipants = []) {
+    if (!rawId) return { jid: '', lid: '', number: '' }
+
+    // Quitar sufijos de dispositivo como :1, :2, etc.
+    const str = String(typeof rawId === 'string' ? rawId : rawId?.id || rawId?.phoneNumber || '').split(':')[0]
     let jid = ''
     let lid = ''
 
     if (str.includes('@lid')) {
         lid = str
-        const found = participants.find(p => p.lid === str || p.id === str)
+        const found = groupParticipants.find(p => p.lid === str || p.id === str)
         if (found && found.id) {
             jid = found.id.split(':')[0]
         }
     } else if (str.includes('@s.whatsapp.net')) {
         jid = str
-        const found = participants.find(p => p.id === str || p.lid === str)
+        const found = groupParticipants.find(p => p.id === str || p.lid === str)
         if (found && found.lid) {
             lid = found.lid.split(':')[0]
         }
@@ -118,31 +119,35 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        let participants = []
+        // Obtener participantes de los metadatos del grupo (igual que welcome.js)
+        let groupParticipants = []
         try {
             const metadata = await conn.groupMetadata(m.chat)
-            participants = metadata.participants || []
+            groupParticipants = metadata.participants || []
         } catch (e) {
-            console.error('Error metadata:', e)
+            console.error('Error al obtener participantes del grupo:', e)
         }
 
-        // Resolver emisor
-        const sender = resolveUser(m.sender || m.key.participant, participants)
+        // 1. Extraer emisor (remitente) correctamente
+        const senderRaw = m.sender || m.key.participant || m.participant
+        const sender = resolveParticipant(senderRaw, groupParticipants)
 
-        // Resolver objetivo (mención, citado o argumento)
-        let rawTarget = null
+        // 2. Extraer el objetivo buscando en todas las propiedades posibles de Baileys
+        let targetRaw = null
+
         if (m.mentionedJid && m.mentionedJid.length > 0) {
-            rawTarget = m.mentionedJid[0]
-        } else if (m.quoted && m.quoted.sender) {
-            rawTarget = m.quoted.sender
+            targetRaw = m.mentionedJid[0]
+        } else if (m.quoted) {
+            // En mensajes citados, la propiedad puede venir como .sender o .participant
+            targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
         } else if (args.length > 0) {
             const num = args[0].replace(/[@\s]/g, '')
             if (/^\d+$/.test(num) && num.length >= 10) {
-                rawTarget = `${num}@s.whatsapp.net`
+                targetRaw = `${num}@s.whatsapp.net`
             }
         }
 
-        const target = resolveUser(rawTarget, participants)
+        const target = resolveParticipant(targetRaw, groupParticipants)
 
         await m.reply('🔞 Cargando contenido...')
 
@@ -157,7 +162,7 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Agrupar todas las variantes de ID para enviarlas en mentions
+            // Construcción del array de menciones híbrido
             const mentions = []
             if (sender.jid) mentions.push(sender.jid)
             if (sender.lid) mentions.push(sender.lid)
