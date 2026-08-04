@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con videos/gifs - menciones fix
+ʚĭɞ ೃ funcion :: comandos nsfw con normalizacion lid/jid
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -16,6 +16,7 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 import { getGroup } from '../../lib/database.js'
+import { normalizeJid, jidToNumber, toJid } from '../../lib/jid.js'
 import axios from 'axios'
 
 const API_KEY = 'evogb-WzR3kPpa'
@@ -63,7 +64,7 @@ export default {
 
     async run(m, { conn, args }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
-        const botData = getSubbotConfig(rawJid, config)
+        const botData = getSubbotConfig(normalizeJid(rawJid), config)
         const botName = botData.name || config.botName || 'Cuervo'
 
         const usedCommand = m.text.split(' ')[0].replace(/^[!#.]/, '').toLowerCase()
@@ -88,30 +89,29 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // Obtener JIDs completos para menciones
-        const senderJid = m.sender
-        const senderNumber = senderJid.split('@')[0]
+        // Normalizar JID del remitente (convierte lid a @s.whatsapp.net)
+        const senderJid = normalizeJid(m.sender)
+        const senderNumber = jidToNumber(senderJid)
 
-        // Obtener usuario mencionado de diferentes fuentes
+        // Obtener y normalizar usuario mencionado
         let targetJid = null
         let targetNumber = null
         
-        // 1. De mentionedJid (mención directa @usuario)
+        // 1. De mentionedJid
         if (m.mentionedJid && m.mentionedJid.length > 0) {
-            targetJid = m.mentionedJid[0]
-            targetNumber = targetJid.split('@')[0]
+            targetJid = normalizeJid(m.mentionedJid[0])
+            targetNumber = jidToNumber(targetJid)
         }
-        // 2. De quoted message (respondiendo mensaje)
+        // 2. De quoted message
         else if (m.quoted && m.quoted.sender) {
-            targetJid = m.quoted.sender
-            targetNumber = targetJid.split('@')[0]
+            targetJid = normalizeJid(m.quoted.sender)
+            targetNumber = jidToNumber(targetJid)
         }
-        // 3. De los argumentos del texto
+        // 3. De argumentos del texto
         else if (args.length > 0) {
-            // Buscar número en el texto (puede ser con @ o sin @)
             const possibleNumber = args[0].replace(/[@\s]/g, '')
             if (/^\d+$/.test(possibleNumber) && possibleNumber.length >= 10) {
-                targetJid = `${possibleNumber}@s.whatsapp.net`
+                targetJid = toJid(possibleNumber) // Convierte número a JID
                 targetNumber = possibleNumber
             }
         }
@@ -129,9 +129,9 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Construir caption con menciones visibles
+            // Construir caption y array de menciones
             let captionText
-            const mentions = [senderJid] // Siempre incluir al remitente
+            const mentions = [senderJid] // Siempre incluir remitente normalizado
             
             if (targetJid) {
                 mentions.push(targetJid)
@@ -159,12 +159,12 @@ export default {
 
             const videoBuffer = Buffer.from(videoResponse.data, 'binary')
 
-            // Enviar mensaje con menciones correctas
+            // Enviar mensaje con JIDs normalizados
             await conn.sendMessage(m.chat, {
                 video: videoBuffer,
                 caption: captionText,
                 gifPlayback: true,
-                mentions: mentions, // Array de JIDs completos
+                mentions: mentions, // Array con JIDs normalizados (@s.whatsapp.net)
                 mimetype: 'video/mp4'
             }, { quoted: m })
 
