@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con normalizacion lid/jid
+ʚĭɞ ೃ funcion :: comandos nsfw con normalizacion correcta
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -16,11 +16,42 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 import { getGroup } from '../../lib/database.js'
-import { normalizeJid, jidToNumber, toJid } from '../../lib/jid.js'
 import axios from 'axios'
 
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
+
+// Función para normalizar JID (similar a decodeIdentifier pero mantiene @s.whatsapp.net)
+function normalizeJid(jid) {
+    if (!jid) return ''
+    const str = String(jid)
+    
+    // Si ya es @s.whatsapp.net, devolverlo limpio
+    if (str.includes('@s.whatsapp.net')) {
+        return str.split(':')[0] // Quitar :1, :2, etc.
+    }
+    
+    // Si es @lid, convertir a @s.whatsapp.net
+    if (str.includes('@lid')) {
+        const number = str.split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
+        return number ? `${number}@s.whatsapp.net` : ''
+    }
+    
+    // Si no tiene @, asumir que es número
+    if (!str.includes('@')) {
+        const number = str.replace(/[^0-9]/g, '')
+        return number ? `${number}@s.whatsapp.net` : ''
+    }
+    
+    // Cualquier otro caso (g.us, etc.)
+    return str
+}
+
+// Extraer solo el número para mostrar en texto
+function getNumber(jid) {
+    if (!jid) return ''
+    return String(jid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
+}
 
 const commandTexts = {
     spank: { action: 'azotó', emoji: '👋' },
@@ -64,7 +95,7 @@ export default {
 
     async run(m, { conn, args }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
-        const botData = getSubbotConfig(normalizeJid(rawJid), config)
+        const botData = getSubbotConfig(rawJid, config)
         const botName = botData.name || config.botName || 'Cuervo'
 
         const usedCommand = m.text.split(' ')[0].replace(/^[!#.]/, '').toLowerCase()
@@ -89,29 +120,40 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // Normalizar JID del remitente (convierte lid a @s.whatsapp.net)
+        // Normalizar JID del remitente (quita lid, :1, etc.)
         const senderJid = normalizeJid(m.sender)
-        const senderNumber = jidToNumber(senderJid)
+        const senderNumber = getNumber(senderJid)
+
+        if (!senderJid) {
+            console.error('Error: No se pudo obtener JID del remitente')
+            return m.reply('❌ Error al procesar tu mensaje.')
+        }
 
         // Obtener y normalizar usuario mencionado
         let targetJid = null
         let targetNumber = null
         
-        // 1. De mentionedJid
+        // Debug: Ver qué tenemos en mentionedJid
+        console.log('Menciones raw:', m.mentionedJid)
+        console.log('Quoted sender:', m.quoted?.sender)
+
+        // 1. De mentionedJid (prioridad alta)
         if (m.mentionedJid && m.mentionedJid.length > 0) {
             targetJid = normalizeJid(m.mentionedJid[0])
-            targetNumber = jidToNumber(targetJid)
+            targetNumber = getNumber(targetJid)
+            console.log('Target de mentionedJid:', targetJid)
         }
         // 2. De quoted message
         else if (m.quoted && m.quoted.sender) {
             targetJid = normalizeJid(m.quoted.sender)
-            targetNumber = jidToNumber(targetJid)
+            targetNumber = getNumber(targetJid)
+            console.log('Target de quoted:', targetJid)
         }
         // 3. De argumentos del texto
         else if (args.length > 0) {
             const possibleNumber = args[0].replace(/[@\s]/g, '')
             if (/^\d+$/.test(possibleNumber) && possibleNumber.length >= 10) {
-                targetJid = toJid(possibleNumber) // Convierte número a JID
+                targetJid = `${possibleNumber}@s.whatsapp.net`
                 targetNumber = possibleNumber
             }
         }
@@ -131,7 +173,7 @@ export default {
 
             // Construir caption y array de menciones
             let captionText
-            const mentions = [senderJid] // Siempre incluir remitente normalizado
+            const mentions = [senderJid] // Siempre incluir remitente
             
             if (targetJid) {
                 mentions.push(targetJid)
@@ -140,6 +182,9 @@ export default {
                     `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* @${targetNumber}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
+                
+                console.log('Menciones a enviar:', mentions)
+                console.log('Caption:', captionText)
             } else {
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
@@ -159,12 +204,12 @@ export default {
 
             const videoBuffer = Buffer.from(videoResponse.data, 'binary')
 
-            // Enviar mensaje con JIDs normalizados
+            // Enviar mensaje
             await conn.sendMessage(m.chat, {
                 video: videoBuffer,
                 caption: captionText,
                 gifPlayback: true,
-                mentions: mentions, // Array con JIDs normalizados (@s.whatsapp.net)
+                mentions: mentions,
                 mimetype: 'video/mp4'
             }, { quoted: m })
 
@@ -186,9 +231,7 @@ async function sendNsfwList(m, conn, botName) {
         `│ • \`!fuck\` - Coger\n` +
         `│ • \`!anal\` - Anal\n` +
         `│ • \`!blowjob\` - Oral\n` +
-        `│ • \`!sixnine\` - 69\n` +
         `│\n` +
-        `│ 📝 Total: ${allCommands.length} comandos\n` +
         `│ 🤖 Bot: *${botName}*\n` +
         `╰──────────────`
 
