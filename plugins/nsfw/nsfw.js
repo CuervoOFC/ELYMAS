@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con normalizacion correcta
+ʚĭɞ ೃ funcion :: comandos nsfw con resolucion real de LID a JID
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -21,36 +21,37 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Función para normalizar JID (similar a decodeIdentifier pero mantiene @s.whatsapp.net)
-function normalizeJid(jid) {
-    if (!jid) return ''
-    const str = String(jid)
-    
-    // Si ya es @s.whatsapp.net, devolverlo limpio
-    if (str.includes('@s.whatsapp.net')) {
-        return str.split(':')[0] // Quitar :1, :2, etc.
-    }
-    
-    // Si es @lid, convertir a @s.whatsapp.net
+// Función para resolver y normalizar LID / JID consultando los participantes del grupo
+function resolveJid(rawJid, participants = []) {
+    if (!rawJid) return ''
+    const str = String(rawJid)
+
+    // Si viene como @lid, buscar el equivalente @s.whatsapp.net en la lista de participantes
     if (str.includes('@lid')) {
-        const number = str.split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
-        return number ? `${number}@s.whatsapp.net` : ''
+        const found = participants.find(p => p.lid === str || p.id === str)
+        if (found && found.id && found.id.includes('@s.whatsapp.net')) {
+            return found.id.split(':')[0]
+        }
     }
-    
-    // Si no tiene @, asumir que es número
+
+    // Si ya es @s.whatsapp.net
+    if (str.includes('@s.whatsapp.net')) {
+        return str.split(':')[0]
+    }
+
+    // Si no tiene arroba, asumir que es un número
     if (!str.includes('@')) {
-        const number = str.replace(/[^0-9]/g, '')
-        return number ? `${number}@s.whatsapp.net` : ''
+        const num = str.replace(/[^0-9]/g, '')
+        return num ? `${num}@s.whatsapp.net` : ''
     }
-    
-    // Cualquier otro caso (g.us, etc.)
-    return str
+
+    return str.split(':')[0]
 }
 
-// Extraer solo el número para mostrar en texto
+// Extraer el número visible para el mensaje
 function getNumber(jid) {
     if (!jid) return ''
-    return String(jid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
+    return String(jid).split('@')[0].replace(/[^0-9]/g, '')
 }
 
 const commandTexts = {
@@ -120,37 +121,34 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // Normalizar JID del remitente (quita lid, :1, etc.)
-        const senderJid = normalizeJid(m.sender)
+        // Obtener participantes del grupo para resolver LIDs
+        let participants = []
+        try {
+            const metadata = await conn.groupMetadata(m.chat)
+            participants = metadata.participants || []
+        } catch (e) {
+            console.error('Error al obtener participantes para resolver LID:', e)
+        }
+
+        // Normalizar remitente
+        const senderJid = resolveJid(m.sender, participants)
         const senderNumber = getNumber(senderJid)
 
         if (!senderJid) {
-            console.error('Error: No se pudo obtener JID del remitente')
-            return m.reply('❌ Error al procesar tu mensaje.')
+            return m.reply('❌ Error al procesar tu usuario.')
         }
 
-        // Obtener y normalizar usuario mencionado
+        // Obtener y resolver usuario de destino
         let targetJid = null
         let targetNumber = null
-        
-        // Debug: Ver qué tenemos en mentionedJid
-        console.log('Menciones raw:', m.mentionedJid)
-        console.log('Quoted sender:', m.quoted?.sender)
 
-        // 1. De mentionedJid (prioridad alta)
         if (m.mentionedJid && m.mentionedJid.length > 0) {
-            targetJid = normalizeJid(m.mentionedJid[0])
+            targetJid = resolveJid(m.mentionedJid[0], participants)
             targetNumber = getNumber(targetJid)
-            console.log('Target de mentionedJid:', targetJid)
-        }
-        // 2. De quoted message
-        else if (m.quoted && m.quoted.sender) {
-            targetJid = normalizeJid(m.quoted.sender)
+        } else if (m.quoted && m.quoted.sender) {
+            targetJid = resolveJid(m.quoted.sender, participants)
             targetNumber = getNumber(targetJid)
-            console.log('Target de quoted:', targetJid)
-        }
-        // 3. De argumentos del texto
-        else if (args.length > 0) {
+        } else if (args.length > 0) {
             const possibleNumber = args[0].replace(/[@\s]/g, '')
             if (/^\d+$/.test(possibleNumber) && possibleNumber.length >= 10) {
                 targetJid = `${possibleNumber}@s.whatsapp.net`
@@ -163,7 +161,7 @@ export default {
         try {
             const apiUrl = `${API_BASE_URL}?type=${usedCommand}&key=${API_KEY}`
             const response = await axios.get(apiUrl, { timeout: 15000 })
-            
+
             if (!response.data.status || !response.data.result) {
                 return m.reply('❌ No se pudo obtener el contenido de la API.')
             }
@@ -171,10 +169,9 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Construir caption y array de menciones
             let captionText
-            const mentions = [senderJid] // Siempre incluir remitente
-            
+            const mentions = [senderJid]
+
             if (targetJid) {
                 mentions.push(targetJid)
                 captionText = 
@@ -182,9 +179,6 @@ export default {
                     `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* @${targetNumber}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
-                
-                console.log('Menciones a enviar:', mentions)
-                console.log('Caption:', captionText)
             } else {
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
@@ -193,7 +187,6 @@ export default {
                     `🤖 Bot: *${botName}*`
             }
 
-            // Descargar video
             const videoResponse = await axios.get(videoUrl, { 
                 responseType: 'arraybuffer',
                 timeout: 30000,
@@ -204,7 +197,6 @@ export default {
 
             const videoBuffer = Buffer.from(videoResponse.data, 'binary')
 
-            // Enviar mensaje
             await conn.sendMessage(m.chat, {
                 video: videoBuffer,
                 caption: captionText,
