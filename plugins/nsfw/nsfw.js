@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ r funcion :: comandos nsfw con resolucion perfecta de JID/LID igual a welcome.js
+ʚĭɞ ೃ funcion :: comandos nsfw con resolucion perfecta de JID/LID sin errores de prefijo
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -21,19 +21,19 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Lógica idéntica a lib/welcome.js para resolver JID real, LID y número
+// Función para resolver JID real, LID y número evitando extraer dígitos de IDs internos
 function resolveParticipant(rawId, groupParticipants = []) {
     if (!rawId) return { jid: '', lid: '', number: '' }
 
-    // Quitar sufijos de dispositivo como :1, :2, etc.
     const str = String(typeof rawId === 'string' ? rawId : rawId?.id || rawId?.phoneNumber || '').split(':')[0]
     let jid = ''
     let lid = ''
 
     if (str.includes('@lid')) {
         lid = str
+        // Buscar el LID en los participantes del grupo para obtener su JID real
         const found = groupParticipants.find(p => p.lid === str || p.id === str)
-        if (found && found.id) {
+        if (found && found.id && found.id.includes('@s.whatsapp.net')) {
             jid = found.id.split(':')[0]
         }
     } else if (str.includes('@s.whatsapp.net')) {
@@ -42,12 +42,16 @@ function resolveParticipant(rawId, groupParticipants = []) {
         if (found && found.lid) {
             lid = found.lid.split(':')[0]
         }
-    } else {
-        const num = str.replace(/[^0-9]/g, '')
-        if (num) jid = `${num}@s.whatsapp.net`
+    } else if (!str.includes('@')) {
+        const clean = str.replace(/[^0-9]/g, '')
+        if (clean) jid = `${clean}@s.whatsapp.net`
     }
 
-    const number = (jid || lid || str).split('@')[0].replace(/[^0-9]/g, '')
+    // Extraer número REAL solo si tenemos un JID verdadero (@s.whatsapp.net)
+    let number = ''
+    if (jid && jid.includes('@s.whatsapp.net')) {
+        number = jid.split('@')[0].replace(/[^0-9]/g, '')
+    }
 
     return { jid, lid, number }
 }
@@ -119,7 +123,6 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // Obtener participantes de los metadatos del grupo (igual que welcome.js)
         let groupParticipants = []
         try {
             const metadata = await conn.groupMetadata(m.chat)
@@ -128,26 +131,37 @@ export default {
             console.error('Error al obtener participantes del grupo:', e)
         }
 
-        // 1. Extraer emisor (remitente) correctamente
+        // 1. Resolver emisor (remitente)
         const senderRaw = m.sender || m.key.participant || m.participant
         const sender = resolveParticipant(senderRaw, groupParticipants)
 
-        // 2. Extraer el objetivo buscando en todas las propiedades posibles de Baileys
+        // 2. Extraer el objetivo priorizando números directos del texto para evitar LIDs corruptos
         let targetRaw = null
+        let extractedNumber = ''
 
-        if (m.mentionedJid && m.mentionedJid.length > 0) {
-            targetRaw = m.mentionedJid[0]
-        } else if (m.quoted) {
-            // En mensajes citados, la propiedad puede venir como .sender o .participant
-            targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
-        } else if (args.length > 0) {
-            const num = args[0].replace(/[@\s]/g, '')
-            if (/^\d+$/.test(num) && num.length >= 10) {
-                targetRaw = `${num}@s.whatsapp.net`
+        if (args.length > 0) {
+            const cleanArg = args.join(' ').replace(/[^0-9]/g, '')
+            if (cleanArg.length >= 10) {
+                extractedNumber = cleanArg
+                targetRaw = `${cleanArg}@s.whatsapp.net`
+            }
+        }
+
+        if (!targetRaw) {
+            if (m.mentionedJid && m.mentionedJid.length > 0) {
+                targetRaw = m.mentionedJid[0]
+            } else if (m.quoted) {
+                targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
             }
         }
 
         const target = resolveParticipant(targetRaw, groupParticipants)
+
+        // Asignación de respaldo si la metadata no halló el número pero se extrajo del texto
+        if (!target.number && extractedNumber) {
+            target.number = extractedNumber
+            if (!target.jid) target.jid = `${extractedNumber}@s.whatsapp.net`
+        }
 
         await m.reply('🔞 Cargando contenido...')
 
@@ -162,7 +176,6 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Construcción del array de menciones híbrido
             const mentions = []
             if (sender.jid) mentions.push(sender.jid)
             if (sender.lid) mentions.push(sender.lid)
