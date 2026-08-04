@@ -8,12 +8,12 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
 ʚĭɞ codigo :: plugins/descargas/facebook.js
-ʚĭɞ funcion :: Descargar videos de Facebook con seleccion de mejor calidad (1080p/720p)
+ʚĭɞ funcion :: Descargar videos de Facebook con seleccion de mejor calidad (Stellar -> EvoGB)
 ──────✧✦✧──────
 */
 
-const EVO_KEY = 'evogb-WzR3kPpa'
 const STELLAR_KEY = 'api-COTah'
+const EVO_KEY = 'evogb-WzR3kPpa'
 
 export default {
     command: ['fb', 'facebook', 'fbdl'],
@@ -21,14 +21,14 @@ export default {
     async run(m, { conn, args, text }) {
         const url = args[0] || text
 
-        if (!url || !url.includes('facebook.com') && !url.includes('fb.watch')) {
+        if (!url || (!url.includes('facebook.com') && !url.includes('fb.watch'))) {
             return m.reply(
                 '╭─「 📘 *FACEBOOK DOWNLOADER* 」\n' +
                 '│\n' +
                 '│ ❌ Ingresa un enlace válido de Facebook.\n' +
                 '│\n' +
                 '│ 📌 *Ejemplo:*\n' +
-                '│ • `.fb https://www.facebook.com/share/r/xxxxxxx`\n' +
+                '│ • `.fb https://www.facebook.com/share/r/1BtPzMGNZQ/`\n' +
                 '╰──────────────'
             )
         }
@@ -38,11 +38,12 @@ export default {
         let videoUrl = null
 
         try {
-            const evoApi = `https://api.evogb.org/dl/facebook?url=${encodeURIComponent(url)}&key=${EVO_KEY}`
-            const res = await fetch(evoApi)
+            const stellarApi = `https://api.stellarwa.xyz/dl/facebook?url=${encodeURIComponent(url)}&key=${STELLAR_KEY}`
+            const res = await fetch(stellarApi)
             const data = await res.json()
 
             if (data?.status && Array.isArray(data.resultados) && data.resultados.length > 0) {
+                
                 const preferred = data.resultados.find(v => v.quality?.includes('1080p')) ||
                                   data.resultados.find(v => v.quality?.includes('720p')) ||
                                   data.resultados.find(v => v.url && v.url !== '/')
@@ -52,13 +53,13 @@ export default {
                 }
             }
         } catch (e) {
-            console.error('❌ Error en API EvoGB Facebook:', e)
+            console.error('❌ Error en API Stellar Facebook:', e)
         }
 
         if (!videoUrl) {
             try {
-                const stellarApi = `https://api.stellarwa.xyz/dl/facebook?url=${encodeURIComponent(url)}&key=${STELLAR_KEY}`
-                const res = await fetch(stellarApi)
+                const evoApi = `https://api.evogb.org/dl/facebook?url=${encodeURIComponent(url)}&key=${EVO_KEY}`
+                const res = await fetch(evoApi)
                 const data = await res.json()
 
                 if (data?.status && Array.isArray(data.resultados) && data.resultados.length > 0) {
@@ -71,7 +72,7 @@ export default {
                     }
                 }
             } catch (e) {
-                console.error('❌ Error en API Stellar Facebook:', e)
+                console.error('❌ Error en API EvoGB Facebook:', e)
             }
         }
 
