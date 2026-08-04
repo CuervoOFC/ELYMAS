@@ -6,9 +6,9 @@ Exclusivo Y Unico Para Este Bot Al
 Clonar O Copiar Dejar Estos Creditos 
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
+ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ tz
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con resolucion real de LID a JID
+ʚĭɞ ೃ funcion :: comandos nsfw con resolucion compatible de LID/JID
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -21,37 +21,34 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Función para resolver y normalizar LID / JID consultando los participantes del grupo
-function resolveJid(rawJid, participants = []) {
-    if (!rawJid) return ''
-    const str = String(rawJid)
+// Resuelve y devuelve tanto el JID real como el LID y el número limpio
+function resolveUser(rawJid, participants = []) {
+    if (!rawJid) return { jid: '', lid: '', number: '' }
+    
+    const str = String(rawJid).split(':')[0]
+    let jid = ''
+    let lid = ''
 
-    // Si viene como @lid, buscar el equivalente @s.whatsapp.net en la lista de participantes
     if (str.includes('@lid')) {
+        lid = str
         const found = participants.find(p => p.lid === str || p.id === str)
-        if (found && found.id && found.id.includes('@s.whatsapp.net')) {
-            return found.id.split(':')[0]
+        if (found && found.id) {
+            jid = found.id.split(':')[0]
         }
-    }
-
-    // Si ya es @s.whatsapp.net
-    if (str.includes('@s.whatsapp.net')) {
-        return str.split(':')[0]
-    }
-
-    // Si no tiene arroba, asumir que es un número
-    if (!str.includes('@')) {
+    } else if (str.includes('@s.whatsapp.net')) {
+        jid = str
+        const found = participants.find(p => p.id === str || p.lid === str)
+        if (found && found.lid) {
+            lid = found.lid.split(':')[0]
+        }
+    } else {
         const num = str.replace(/[^0-9]/g, '')
-        return num ? `${num}@s.whatsapp.net` : ''
+        if (num) jid = `${num}@s.whatsapp.net`
     }
 
-    return str.split(':')[0]
-}
+    const number = (jid || lid || str).split('@')[0].replace(/[^0-9]/g, '')
 
-// Extraer el número visible para el mensaje
-function getNumber(jid) {
-    if (!jid) return ''
-    return String(jid).split('@')[0].replace(/[^0-9]/g, '')
+    return { jid, lid, number }
 }
 
 const commandTexts = {
@@ -121,40 +118,31 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // Obtener participantes del grupo para resolver LIDs
         let participants = []
         try {
             const metadata = await conn.groupMetadata(m.chat)
             participants = metadata.participants || []
         } catch (e) {
-            console.error('Error al obtener participantes para resolver LID:', e)
+            console.error('Error metadata:', e)
         }
 
-        // Normalizar remitente
-        const senderJid = resolveJid(m.sender, participants)
-        const senderNumber = getNumber(senderJid)
+        // Resolver emisor
+        const sender = resolveUser(m.sender || m.key.participant, participants)
 
-        if (!senderJid) {
-            return m.reply('❌ Error al procesar tu usuario.')
-        }
-
-        // Obtener y resolver usuario de destino
-        let targetJid = null
-        let targetNumber = null
-
+        // Resolver objetivo (mención, citado o argumento)
+        let rawTarget = null
         if (m.mentionedJid && m.mentionedJid.length > 0) {
-            targetJid = resolveJid(m.mentionedJid[0], participants)
-            targetNumber = getNumber(targetJid)
+            rawTarget = m.mentionedJid[0]
         } else if (m.quoted && m.quoted.sender) {
-            targetJid = resolveJid(m.quoted.sender, participants)
-            targetNumber = getNumber(targetJid)
+            rawTarget = m.quoted.sender
         } else if (args.length > 0) {
-            const possibleNumber = args[0].replace(/[@\s]/g, '')
-            if (/^\d+$/.test(possibleNumber) && possibleNumber.length >= 10) {
-                targetJid = `${possibleNumber}@s.whatsapp.net`
-                targetNumber = possibleNumber
+            const num = args[0].replace(/[@\s]/g, '')
+            if (/^\d+$/.test(num) && num.length >= 10) {
+                rawTarget = `${num}@s.whatsapp.net`
             }
         }
+
+        const target = resolveUser(rawTarget, participants)
 
         await m.reply('🔞 Cargando contenido...')
 
@@ -162,27 +150,33 @@ export default {
             const apiUrl = `${API_BASE_URL}?type=${usedCommand}&key=${API_KEY}`
             const response = await axios.get(apiUrl, { timeout: 15000 })
 
-            if (!response.data.status || !response.data.result) {
+            if (!response.data?.status || !response.data?.result) {
                 return m.reply('❌ No se pudo obtener el contenido de la API.')
             }
 
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            let captionText
-            const mentions = [senderJid]
+            // Agrupar todas las variantes de ID para enviarlas en mentions
+            const mentions = []
+            if (sender.jid) mentions.push(sender.jid)
+            if (sender.lid) mentions.push(sender.lid)
 
-            if (targetJid) {
-                mentions.push(targetJid)
+            let captionText = ''
+
+            if (target.number) {
+                if (target.jid) mentions.push(target.jid)
+                if (target.lid) mentions.push(target.lid)
+
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* @${targetNumber}\n\n` +
+                    `${commandInfo.emoji} @${sender.number} *${commandInfo.action}* @${target.number}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             } else {
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${senderNumber} *${commandInfo.action}* alguien especial 😏\n\n` +
+                    `${commandInfo.emoji} @${sender.number} *${commandInfo.action}* alguien especial 😏\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             }
