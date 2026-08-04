@@ -28,7 +28,7 @@ export default {
                 '│ ❌ Ingresa un enlace válido de Facebook.\n' +
                 '│\n' +
                 '│ 📌 *Ejemplo:*\n' +
-                '│ • `.fb https://www.facebook.com/share/r/1BtPzMGNZQ/`\n' +
+                '│ • `.fb https://www.facebook.com/share/r/xxxxxxx`\n' +
                 '╰──────────────'
             )
         }
