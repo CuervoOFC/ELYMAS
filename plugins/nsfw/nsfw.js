@@ -7,8 +7,8 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/nsfw/nsfw.js
-ʚĭɞ ೃ funcion :: comandos de interaccion nsfw con verificacion
+ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
+ʚĭɞ ೃ funcion :: comandos nsfw con videos/gifs
 ʚĭɞ ೃ estado :: completo
 ──────✧✦✧──────
 */
@@ -17,46 +17,47 @@ import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 import { getGroup } from '../../lib/database.js'
 import axios from 'axios'
+import { proto } from '@itsliaaa/baileys'
 
-const API_URL = 'https://api.evogb.org/nsfw/interaction?type=list&key=evogb-WzR3kPpa'
+const API_KEY = 'evogb-WzR3kPpa'
+const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-// Mapeo completo de comandos a textos personalizados
+// Mapeo de comandos a textos personalizados
 const commandTexts = {
-    spank: { action: 'azotó', emoji: '👋', desc: 'Golpear las nalgas para excitación sexual' },
-    undress: { action: 'desvistió', emoji: '👗', desc: 'Quitar la ropa para exponer el cuerpo desnudo' },
-    yuri: { action: 'hizo yuri con', emoji: '👭', desc: 'Posición lésbica donde se frotan los genitales mutuamente' },
-    sixnine: { action: 'hizo un 69 con', emoji: '🔥', desc: 'Posición donde ambos se estimulan oralmente al mismo tiempo' },
-    anal: { action: 'penetró analmente a', emoji: '🍑', desc: 'Penetración sexual por el ano' },
-    fuck: { action: 'cogió con', emoji: '💦', desc: 'Acto de penetración sexual vigorosa' },
-    cummouth: { action: 'se vino en la boca de', emoji: '👄', desc: 'Eyaculación dentro de la boca durante el sexo oral' },
-    suckboobs: { action: 'chupó las tetas de', emoji: '🍒', desc: 'Estimular los pechos con la boca y lengua' },
-    cumshot: { action: 'le hizo un cumshot a', emoji: '💦', desc: 'Eyaculación externa sobre el cuerpo o rostro' },
-    lickpussy: { action: 'lamió el coño de', emoji: '👅', desc: 'Estimular la vulva con la lengua' },
-    lickdick: { action: 'lamió la verga de', emoji: '👅', desc: 'Lamer el pene para excitación' },
-    lickass: { action: 'lamió el culo de', emoji: '👅', desc: 'Lamer el ano para placer sexual' },
-    handjob: { action: 'le hizo una paja a', emoji: '✊', desc: 'Masturbación manual del pene' },
-    grope: { action: 'agarró las nalgas de', emoji: '🍑', desc: 'Acariciar o apretar las nalgas de forma sexual' },
-    cum: { action: 'se vino con', emoji: '💦', desc: 'Eyaculación intensa o clímax sexual' },
-    grabboobs: { action: 'agarró las tetas de', emoji: '🍒', desc: 'Agarar los pechos con las manos para estimulación' },
-    blowjob: { action: 'le hizo un oral a', emoji: '👄', desc: 'Sexo oral en el pene hasta la eyaculación' },
-    boobjob: { action: 'le hizo una cubana a', emoji: '🍒', desc: 'Estimular el pene entre los pechos' },
-    fap: { action: 'se masturbó pensando en', emoji: '✊', desc: 'Masturbación solitaria del pene' },
-    footjob: { action: 'le hizo un footjob a', emoji: '🦶', desc: 'Estimular el pene usando los pies' },
-    fingering: { action: 'le metió dedos a', emoji: '👆', desc: 'Introducir y mover los dedos en la vagina o ano' },
-    creampie: { action: 'le hizo un creampie a', emoji: '🥧', desc: 'Eyaculación interna en la vagina' },
-    facesitting: { action: 'se sentó en la cara de', emoji: '😮', desc: 'Sentarse sobre la cara de la pareja' },
-    futanari: { action: 'hizo futanari con', emoji: '🍆', desc: 'Personaje futanari realizando actos sexuales' },
-    pegging: { action: 'le hizo pegging a', emoji: '🍆', desc: 'Mujer que penetra analmente a un hombre con strap-on' },
-    bondage: { action: 'ató con cuerdas a', emoji: '⛓️', desc: 'Atar o inmovilizar a la pareja para dominar' },
-    deepthroat: { action: 'le hizo deepthroat a', emoji: '👄', desc: 'Introducir el pene completamente hasta la garganta' },
-    thighjob: { action: 'le hizo un thighjob a', emoji: '🦵', desc: 'Estimular el pene frotándolo entre los muslos' },
-    yaoi: { action: 'hizo yaoi con', emoji: '👬', desc: 'Posición gay masculina con actos sexuales íntimos' },
-    bukkake: { action: 'le hizo bukkake a', emoji: '💦', desc: 'Múltiples hombres eyaculan sobre el rostro o cuerpo' },
-    orgy: { action: 'hizo una orgía con', emoji: '🎉', desc: 'Sexo grupal con varias personas simultáneamente' },
-    squirting: { action: 'hizo squirt a', emoji: '💧', desc: 'Expulsión de líquido durante el clímax femenino' }
+    spank: { action: 'azotó', emoji: '👋' },
+    undress: { action: 'desvistió', emoji: '👗' },
+    yuri: { action: 'hizo yuri con', emoji: '👭' },
+    sixnine: { action: 'hizo un 69 con', emoji: '🔥' },
+    anal: { action: 'penetró analmente a', emoji: '🍑' },
+    fuck: { action: 'cogió con', emoji: '💦' },
+    cummouth: { action: 'se vino en la boca de', emoji: '👄' },
+    suckboobs: { action: 'chupó las tetas de', emoji: '🍒' },
+    cumshot: { action: 'le hizo un cumshot a', emoji: '💦' },
+    lickpussy: { action: 'lamió el coño de', emoji: '👅' },
+    lickdick: { action: 'lamió la verga de', emoji: '👅' },
+    lickass: { action: 'lamió el culo de', emoji: '👅' },
+    handjob: { action: 'le hizo una paja a', emoji: '✊' },
+    grope: { action: 'agarró las nalgas de', emoji: '🍑' },
+    cum: { action: 'se vino con', emoji: '💦' },
+    grabboobs: { action: 'agarró las tetas de', emoji: '🍒' },
+    blowjob: { action: 'le hizo un oral a', emoji: '👄' },
+    boobjob: { action: 'le hizo una cubana a', emoji: '🍒' },
+    fap: { action: 'se masturbó pensando en', emoji: '✊' },
+    footjob: { action: 'le hizo un footjob a', emoji: '🦶' },
+    fingering: { action: 'le metió dedos a', emoji: '👆' },
+    creampie: { action: 'le hizo un creampie a', emoji: '🥧' },
+    facesitting: { action: 'se sentó en la cara de', emoji: '😮' },
+    futanari: { action: 'hizo futanari con', emoji: '🍆' },
+    pegging: { action: 'le hizo pegging a', emoji: '🍆' },
+    bondage: { action: 'ató con cuerdas a', emoji: '⛓️' },
+    deepthroat: { action: 'le hizo deepthroat a', emoji: '👄' },
+    thighjob: { action: 'le hizo un thighjob a', emoji: '🦵' },
+    yaoi: { action: 'hizo yaoi con', emoji: '👬' },
+    bukkake: { action: 'le hizo bukkake a', emoji: '💦' },
+    orgy: { action: 'hizo una orgía con', emoji: '🎉' },
+    squirting: { action: 'hizo squirt a', emoji: '💧' }
 }
 
-// Comandos para la lista
 const allCommands = Object.keys(commandTexts)
 
 export default {
@@ -69,17 +70,17 @@ export default {
 
         const usedCommand = m.text.split(' ')[0].replace(/^[!#.]/, '').toLowerCase()
 
-        // Verificar si es comando de lista
+        // Comando de lista
         if (usedCommand === 'nsfwlist' || usedCommand === 'listansfw') {
             return sendNsfwList(m, conn, botName)
         }
 
-        // Verificar si es grupo
+        // Verificar grupo
         if (!m.isGroup) {
             return m.reply('⚠️ Los comandos NSFW solo funcionan en grupos.')
         }
 
-        // Verificar si NSFW está activado en el grupo
+        // Verificar NSFW activado
         const groupData = getGroup(m.chat)
         if (!groupData.nsfw) {
             return m.reply(
@@ -101,71 +102,67 @@ export default {
             mentionedUser = m.quoted.sender
         }
 
+        // Enviar mensaje de carga
+        await m.reply('🔞 Cargando contenido...')
+
         try {
-            const response = await axios.get(API_URL)
-            const reactions = response.data.reactions
-            const description = reactions[usedCommand] || commandInfo.desc
+            // Llamar a la API para obtener el video/GIF
+            const apiUrl = `${API_BASE_URL}?type=${usedCommand}&key=${API_KEY}`
+            const response = await axios.get(apiUrl, { timeout: 15000 })
+            
+            if (!response.data.status || !response.data.result) {
+                return m.reply('❌ No se pudo obtener el contenido de la API.')
+            }
 
-            let messageText
+            const videoUrl = response.data.result
+            const description = response.data.description || commandInfo.action
 
+            // Construir mensaje de caption
+            let captionText
             if (mentionedUser) {
                 const targetName = mentionedUser.split('@')[0]
-                messageText = 
-                    `🔞 *NSFW INTERACCIÓN*\n\n` +
+                captionText = 
+                    `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
                     `${commandInfo.emoji} @${senderName} *${commandInfo.action}* @${targetName}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
-                
-                await conn.sendMessage(m.chat, {
-                    text: messageText,
-                    mentions: [sender, mentionedUser]
-                }, { quoted: m })
-
             } else {
-                messageText = 
-                    `🔞 *NSFW INTERACCIÓN*\n\n` +
+                captionText = 
+                    `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
                     `${commandInfo.emoji} @${senderName} *${commandInfo.action}* alguien especial 😏\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
-                
-                await conn.sendMessage(m.chat, {
-                    text: messageText,
-                    mentions: [sender]
-                }, { quoted: m })
             }
+
+            // Descargar el video y enviarlo
+            const videoResponse = await axios.get(videoUrl, { 
+                responseType: 'arraybuffer',
+                timeout: 30000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            })
+
+            const videoBuffer = Buffer.from(videoResponse.data, 'binary')
+
+            // Enviar video como GIF (ptvMessage - video que se ve como GIF)
+            await conn.sendMessage(m.chat, {
+                video: videoBuffer,
+                caption: captionText,
+                gifPlayback: true, // Se reproduce como GIF
+                mentions: mentionedUser ? [sender, mentionedUser] : [sender],
+                mimetype: 'video/mp4'
+            }, { quoted: m })
 
         } catch (error) {
-            console.error('Error API NSFW:', error)
+            console.error('Error NSFW API:', error.message)
             
-            // Si falla la API, usar descripción local
-            const sender = m.sender
-            const senderName = sender.split('@')[0]
-            let fallbackText
-            
-            if (mentionedUser) {
-                const targetName = mentionedUser.split('@')[0]
-                fallbackText = 
-                    `🔞 *NSFW INTERACCIÓN*\n\n` +
-                    `${commandInfo.emoji} @${senderName} *${commandInfo.action}* @${targetName}\n\n` +
-                    `💬 _${commandInfo.desc}_\n\n` +
-                    `🤖 Bot: *${botName}*`
-                
-                await conn.sendMessage(m.chat, {
-                    text: fallbackText,
-                    mentions: [sender, mentionedUser]
-                }, { quoted: m })
-            } else {
-                fallbackText = 
-                    `🔞 *NSFW INTERACCIÓN*\n\n` +
-                    `${commandInfo.emoji} @${senderName} *${commandInfo.action}* alguien especial 😏\n\n` +
-                    `💬 _${commandInfo.desc}_\n\n` +
-                    `🤖 Bot: *${botName}*`
-                
-                await conn.sendMessage(m.chat, {
-                    text: fallbackText,
-                    mentions: [sender]
-                }, { quoted: m })
-            }
+            // Si falla, enviar mensaje de error
+            m.reply(
+                '❌ *Error al obtener el contenido*\n\n' +
+                '⚠️ La API no respondió o el video no está disponible.\n' +
+                'Inténtalo de nuevo más tarde.'
+            )
         }
     }
 }
@@ -173,7 +170,7 @@ export default {
 // Función para enviar la lista de comandos
 async function sendNsfwList(m, conn, botName) {
     const listText = 
-        `╭─「 🔞 *COMANDOS NSFW DISPONIBLES* 」\n` +
+        `╭─「 🔞 *COMANDOS NSFW CON VIDEOS* 」\n` +
         `│\n` +
         `│ 📋 *Lista de interacciones:*\n` +
         `│\n` +
@@ -199,18 +196,19 @@ async function sendNsfwList(m, conn, botName) {
         `│ 🦶 \`!footjob\` ➔ Con los pies\n` +
         `│ 👆 \`!fingering\` ➔ Meter dedos\n` +
         `│ 🥧 \`!creampie\` ➔ Creampie\n` +
-        `│ 😮 \`!facesitting\` ➔ Sentarse en cara\n` +
+        `│ 😮 \`!facesitting\` ➔ Facesitting\n` +
         `│ 🍆 \`!futanari\` ➔ Futanari\n` +
         `│ 🍆 \`!pegging\` ➔ Pegging\n` +
         `│ ⛓️ \`!bondage\` ➔ Bondage\n` +
-        `│ 👄 \`!deepthroat\` ➔ Garganta profunda\n` +
-        `│ 🦵 \`!thighjob\` ➔ Entre muslos\n` +
+        `│ 👄 \`!deepthroat\` ➔ Deepthroat\n` +
+        `│ 🦵 \`!thighjob\` ➔ Thighjob\n` +
         `│ 👬 \`!yaoi\` ➔ Yaoi/Gay\n` +
         `│ 💦 \`!bukkake\` ➔ Bukkake\n` +
         `│ 🎉 \`!orgy\` ➔ Orgía\n` +
         `│ 💧 \`!squirting\` ➔ Squirt\n` +
         `│\n` +
         `│ 💡 *Uso:* \`!comando @usuario\`\n` +
+        `│ 🎬 *Formato:* Video/GIF\n` +
         `│ 📝 *Total:* ${allCommands.length} comandos\n` +
         `│\n` +
         `│ 🤖 Bot: *${botName}*\n` +
