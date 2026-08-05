@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con soporte directo para LIDs y JIDs en Baileys v7
+ʚĭɞ ೃ funcion :: comandos nsfw (resolución estricta por mención/cita en Baileys v7)
 ──────✧✦✧──────
 */
 
@@ -54,7 +54,7 @@ async function resolveParticipant(rawId, altPn, conn) {
                 }
             }
         } catch (e) {
-            // Silenciar fallo
+            // Silenciar fallo si no hay coincidencia
         }
     }
 
@@ -106,7 +106,7 @@ const allCommands = Object.keys(commandTexts)
 export default {
     command: [...allCommands, 'nsfwlist', 'listansfw'],
 
-    async run(m, { conn, args }) {
+    async run(m, { conn }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
         const botData = getSubbotConfig(rawJid, config)
         const botName = botData.name || config.botName || 'Cuervo'
@@ -138,36 +138,18 @@ export default {
         const senderPn = m.key?.senderPn || m.key?.participantAlt
         const sender = await resolveParticipant(senderRaw, senderPn, conn)
 
-        // 2. Extraer objetivo
+        // 2. Extraer objetivo (Únicamente por mención directa o mensaje citado/reply)
         let targetRaw = null
         let targetPn = null
-        let manualNumber = ''
 
-        // Prioridad A: Número escrito manualmente en los argumentos (.cum @1587...)
-        if (args.length > 0) {
-            const cleanArg = args.join(' ').replace(/[^0-9]/g, '')
-            if (cleanArg.length >= 8) {
-                manualNumber = cleanArg
-                targetRaw = `${cleanArg}@s.whatsapp.net`
-            }
-        }
-
-        // Prioridad B: Menciones de Baileys o mensajes citados
-        if (!targetRaw) {
-            if (m.mentionedJid && m.mentionedJid.length > 0) {
-                targetRaw = m.mentionedJid[0]
-            } else if (m.quoted) {
-                targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
-                targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
-            }
+        if (m.mentionedJid && m.mentionedJid.length > 0) {
+            targetRaw = m.mentionedJid[0]
+        } else if (m.quoted) {
+            targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
+            targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
         }
 
         const target = await resolveParticipant(targetRaw, targetPn, conn)
-
-        if (manualNumber) {
-            target.tagText = manualNumber
-            target.mentionId = `${manualNumber}@s.whatsapp.net`
-        }
 
         await m.reply('🔞 Cargando contenido...')
 
@@ -182,7 +164,7 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Array de menciones dinámico
+            // Menciones dinámicas
             const mentions = []
             if (sender.mentionId) mentions.push(sender.mentionId)
 
