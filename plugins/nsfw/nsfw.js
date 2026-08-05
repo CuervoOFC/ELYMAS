@@ -6,9 +6,9 @@ Exclusivo Y Unico Para Este Bot Al
 Clonar O Copiar Dejar Estos Creditos 
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw (resolución estricta por mención/cita en Baileys v7)
+ʚĭɞ r CODIGO JAVASCRIPT ʚĭɞ r
+ʚĭɞ r codigo :: plugins/nsfw/interacciones.js
+ʚĭɞ r funcion :: comandos nsfw con extraccion precisa de menciones directas (@usuario)
 ──────✧✦✧──────
 */
 
@@ -58,7 +58,7 @@ async function resolveParticipant(rawId, altPn, conn) {
         }
     }
 
-    // 3. Fallback: usar el ID directo entregado por WhatsApp (soporta @lid y @s.whatsapp.net)
+    // 3. Fallback: usar el ID directo entregado por WhatsApp
     const tag = str.split('@')[0].replace(/[^0-9]/g, '') || 'usuario'
     return {
         mentionId: str,
@@ -138,13 +138,20 @@ export default {
         const senderPn = m.key?.senderPn || m.key?.participantAlt
         const sender = await resolveParticipant(senderRaw, senderPn, conn)
 
-        // 2. Extraer objetivo (Únicamente por mención directa o mensaje citado/reply)
+        // 2. Extraer objetivo
         let targetRaw = null
         let targetPn = null
 
-        if (m.mentionedJid && m.mentionedJid.length > 0) {
-            targetRaw = m.mentionedJid[0]
+        // Extraer menciones con metadatos nativos de Baileys v7
+        const contextInfo = m.message?.extendedTextMessage?.contextInfo || m.msg?.contextInfo
+        const mentionedJids = m.mentionedJid || contextInfo?.mentionedJid || []
+
+        if (mentionedJids.length > 0) {
+            targetRaw = mentionedJids[0]
+            // Extraer el Phone Number alternativo si la librería lo incluyó en contextInfo
+            targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
         } else if (m.quoted) {
+            // Cita / Reply (que ya sabemos que funciona bien)
             targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
             targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
         }
