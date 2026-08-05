@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ r CODIGO JAVASCRIPT ʚĭɞ r
 ʚĭɞ r codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ r funcion :: comandos nsfw con extraccion precisa de menciones directas (@usuario)
+ʚĭɞ r funcion :: comandos nsfw con extraccion precisa de menciones directas (@usuario) y nsfwlist dinamico
 ──────✧✦✧──────
 */
 
@@ -138,7 +138,6 @@ export default {
 
         if (mentionedJids.length > 0) {
             targetRaw = mentionedJids[0]
-    
             targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
         } else if (m.quoted) {
             targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
@@ -207,18 +206,22 @@ export default {
 }
 
 async function sendNsfwList(m, conn, botName) {
+    const entries = Object.entries(commandTexts)
+    let commandsFormatted = ''
+
+    entries.forEach(([cmd, info], index) => {
+        commandsFormatted += `│ ${info.emoji} \`.${cmd}\` - _${info.action}_\n`
+    })
+
     const listText = 
-        `╭─「 🔞 *COMANDOS NSFW* 」\n` +
+        `╭─「 🔞 *LISTA DE COMANDOS NSFW* 」\n` +
         `│\n` +
-        `│ 💡 *Uso:* \`!comando @usuario\`\n` +
+        `│ 💡 *Uso:* \`.comando @usuario\` o respondiendo a un mensaje\n` +
+        `│ 📊 *Total de comandos:* ${entries.length}\n` +
         `│\n` +
-        `│ 🔥 Populares:\n` +
-        `│ • \`!cum\` - Venirse\n` +
-        `│ • \`!fuck\` - Coger\n` +
-        `│ • \`!anal\` - Anal\n` +
-        `│ • \`!blowjob\` - Oral\n` +
+        commandsFormatted +
         `│\n` +
-        `│ 🤖 Bot: *${botName}*\n` +
+        `🤖 Bot: *${botName}*\n` +
         `╰──────────────`
 
     await m.reply(listText)
