@@ -7,7 +7,7 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ r CODIGO JAVASCRIPT ʚĭɞ r
-ʚĭɞ r codigo :: plugins/nsfw/interacciones.js
+ʚĭɞ r codigo :: plugins/nsfw/nsfwlist.js
 ʚĭɞ r funcion :: comandos nsfw con extraccion precisa de menciones directas (@usuario) y nsfwlist dinamico
 ──────✧✦✧──────
 */
