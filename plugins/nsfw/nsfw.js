@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw optimizado para @itsliaaa/baileys (resolucion LID/JID con findUserId)
+ʚĭɞ ೃ funcion :: comandos nsfw (resolución LID/JID usando exclusivamente sock.findUserId)
 ──────✧✦✧──────
 */
 
@@ -21,54 +21,38 @@ const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
 /**
- * Resuelve el JID real (@s.whatsapp.net), LID (@lid) y el número telefónico
- * Aprovecha sock.findUserId de @itsliaaa/baileys si no está en la metadata del grupo.
+ * Resuelve el JID real (@s.whatsapp.net), LID (@lid) y el número de teléfono
+ * usando únicamente `conn.findUserId` de @itsliaaa/baileys.
  */
-async function resolveParticipant(rawId, conn, groupParticipants = []) {
+async function resolveParticipant(rawId, conn) {
     if (!rawId) return { jid: '', lid: '', number: '' }
 
     const str = String(typeof rawId === 'string' ? rawId : rawId?.id || rawId?.phoneNumber || '').split(':')[0]
     let jid = ''
     let lid = ''
 
-    if (str.includes('@lid')) {
-        lid = str
-        // 1. Buscar en participantes del grupo
-        const found = groupParticipants.find(p => p.lid === str || p.id === str)
-        if (found && found.id && found.id.includes('@s.whatsapp.net')) {
-            jid = found.id.split(':')[0]
-        } 
-        // 2. Si no se encuentra en el grupo, usar findUserId() de @itsliaaa/baileys
-        else if (conn && typeof conn.findUserId === 'function') {
-            try {
-                const res = await conn.findUserId(str)
-                if (res?.phoneNumber) jid = res.phoneNumber
-            } catch (e) {
-                // Silenciar fallo si no se encuentra
+    if (conn && typeof conn.findUserId === 'function') {
+        try {
+            // Busca directamente el objeto mapeado { phoneNumber, lid } en Baileys
+            const res = await conn.findUserId(str)
+            if (res) {
+                if (res.phoneNumber) jid = res.phoneNumber
+                if (res.lid) lid = res.lid
             }
+        } catch (e) {
+            // Si no lo encuentra, asignamos los valores de respaldo según la estructura del string
         }
-    } else if (str.includes('@s.whatsapp.net')) {
-        jid = str
-        // 1. Buscar en participantes del grupo
-        const found = groupParticipants.find(p => p.id === str || p.lid === str)
-        if (found && found.lid) {
-            lid = found.lid.split(':')[0]
-        }
-        // 2. Si no tiene LID en grupo, consultar findUserId() de @itsliaaa/baileys
-        else if (conn && typeof conn.findUserId === 'function') {
-            try {
-                const res = await conn.findUserId(str)
-                if (res?.lid) lid = res.lid
-            } catch (e) {
-                // Silenciar fallo
-            }
-        }
-    } else if (!str.includes('@')) {
+    }
+
+    // Respaldos si no se obtuvo respuesta de findUserId
+    if (!jid && str.includes('@s.whatsapp.net')) jid = str
+    if (!lid && str.includes('@lid')) lid = str
+    if (!jid && !str.includes('@')) {
         const clean = str.replace(/[^0-9]/g, '')
         if (clean) jid = `${clean}@s.whatsapp.net`
     }
 
-    // El número formateado para menciones (@123456) SOLO sale del JID real
+    // Extraer número limpio del JID
     let number = ''
     if (jid && jid.includes('@s.whatsapp.net')) {
         number = jid.split('@')[0].replace(/[^0-9]/g, '')
@@ -144,19 +128,11 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        let groupParticipants = []
-        try {
-            const metadata = await conn.groupMetadata(m.chat)
-            groupParticipants = metadata.participants || []
-        } catch (e) {
-            console.error('Error al obtener participantes del grupo:', e)
-        }
-
-        // 1. Resolver emisor (sender)
+        // 1. Resolver emisor usando solo conn.findUserId
         const senderRaw = m.sender || m.key.participant || m.participant
-        const sender = await resolveParticipant(senderRaw, conn, groupParticipants)
+        const sender = await resolveParticipant(senderRaw, conn)
 
-        // 2. Determinar/extraer objetivo
+        // 2. Extraer rawId del objetivo
         let targetRaw = null
         let extractedNumber = ''
 
@@ -176,8 +152,8 @@ export default {
             }
         }
 
-        // 3. Resolver objetivo asíncronamente aprovechando sock.findUserId
-        const target = await resolveParticipant(targetRaw, conn, groupParticipants)
+        // 3. Resolver objetivo usando solo conn.findUserId
+        const target = await resolveParticipant(targetRaw, conn)
 
         if (!target.number && extractedNumber) {
             target.number = extractedNumber
@@ -197,7 +173,6 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Agregar tanto JID como LID al array de menciones para compatibilidad total con Baileys
             const mentions = []
             if (sender.jid) mentions.push(sender.jid)
             if (sender.lid) mentions.push(sender.lid)
