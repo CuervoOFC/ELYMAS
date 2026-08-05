@@ -28,7 +28,8 @@ function getCategoryIcon(category) {
         'owner': '👑',
         'economia': '💰',
         'juegos': '🎮',
-        'herramientas': '🛠️'
+        'herramientas': '🛠️',
+        'nsfw': '🔞'
     }
     return icons[category.toLowerCase()] || '📁'
 }
