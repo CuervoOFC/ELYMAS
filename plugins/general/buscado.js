@@ -12,8 +12,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-import config from '../config.js'
-import { getSubbotConfig } from '../lib/subbotconfig.js'
+import config from '../../config.js'
+import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 /**
  * Resuelve y extrae el identificador directo (JID/LID) y el número telefónico limpio.
