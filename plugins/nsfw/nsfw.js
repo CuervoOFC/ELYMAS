@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw (resolución LID/JID usando exclusivamente sock.findUserId)
+ʚĭɞ ೃ funcion :: comandos nsfw con resolucion nativa Baileys v7 (senderPn / findUserId)
 ──────✧✦✧──────
 */
 
@@ -21,41 +21,50 @@ const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
 /**
- * Resuelve el JID real (@s.whatsapp.net), LID (@lid) y el número de teléfono
- * usando únicamente `conn.findUserId` de @itsliaaa/baileys.
+ * Resuelve el JID real, LID y el número telefónico utilizando las
+ * propiedades nativas de Baileys v7 y limpiando la entrada de findUserId.
  */
-async function resolveParticipant(rawId, conn) {
-    if (!rawId) return { jid: '', lid: '', number: '' }
+async function resolveParticipant(rawId, altPn, conn) {
+    if (!rawId && !altPn) return { jid: '', lid: '', number: '' }
 
-    const str = String(typeof rawId === 'string' ? rawId : rawId?.id || rawId?.phoneNumber || '').split(':')[0]
     let jid = ''
     let lid = ''
+    let number = ''
 
-    if (conn && typeof conn.findUserId === 'function') {
-        try {
-            // Busca directamente el objeto mapeado { phoneNumber, lid } en Baileys
-            const res = await conn.findUserId(str)
-            if (res) {
-                if (res.phoneNumber) jid = res.phoneNumber
-                if (res.lid) lid = res.lid
-            }
-        } catch (e) {
-            // Si no lo encuentra, asignamos los valores de respaldo según la estructura del string
+    // 1. Si Baileys ya nos proporcionó el Phone Number real en senderPn / participantAlt
+    if (altPn) {
+        const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
+        if (cleanPn) {
+            jid = `${cleanPn}@s.whatsapp.net`
+            number = cleanPn
         }
     }
 
-    // Respaldos si no se obtuvo respuesta de findUserId
-    if (!jid && str.includes('@s.whatsapp.net')) jid = str
-    if (!lid && str.includes('@lid')) lid = str
-    if (!jid && !str.includes('@')) {
-        const clean = str.replace(/[^0-9]/g, '')
-        if (clean) jid = `${clean}@s.whatsapp.net`
+    const str = String(rawId || '').split(':')[0]
+
+    if (str.includes('@s.whatsapp.net')) {
+        jid = str
+        number = str.split('@')[0].replace(/[^0-9]/g, '')
+    } else if (str.includes('@lid')) {
+        lid = str
     }
 
-    // Extraer número limpio del JID
-    let number = ''
-    if (jid && jid.includes('@s.whatsapp.net')) {
-        number = jid.split('@')[0].replace(/[^0-9]/g, '')
+    // 2. Si solo tenemos el número o LID y no se ha resuelto con senderPn, consultar a findUserId
+    if (!number && conn && typeof conn.findUserId === 'function') {
+        try {
+            // findUserId requiere la cadena limpia solo con dígitos según la doc de @itsliaaa/baileys
+            const rawTarget = number || str.split('@')[0].replace(/[^0-9]/g, '')
+            if (rawTarget && rawTarget.length >= 8) {
+                const res = await conn.findUserId(rawTarget)
+                if (res?.phoneNumber) {
+                    jid = res.phoneNumber
+                    number = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
+                }
+                if (res?.lid) lid = res.lid
+            }
+        } catch (e) {
+            // Silenciar fallo si no se encuentra mapeo
+        }
     }
 
     return { jid, lid, number }
@@ -128,14 +137,17 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // 1. Resolver emisor usando solo conn.findUserId
+        // 1. Emisor (remitente): Leer id y altPn nativos de Baileys v7
         const senderRaw = m.sender || m.key.participant || m.participant
-        const sender = await resolveParticipant(senderRaw, conn)
+        const senderPn = m.key?.senderPn || m.key?.participantAlt
+        const sender = await resolveParticipant(senderRaw, senderPn, conn)
 
-        // 2. Extraer rawId del objetivo
+        // 2. Extraer objetivo
         let targetRaw = null
+        let targetPn = null
         let extractedNumber = ''
 
+        // Prioridad A: Número directo en los argumentos del texto
         if (args.length > 0) {
             const cleanArg = args.join(' ').replace(/[^0-9]/g, '')
             if (cleanArg.length >= 10) {
@@ -144,16 +156,17 @@ export default {
             }
         }
 
+        // Prioridad B: Mencionado o Citado
         if (!targetRaw) {
             if (m.mentionedJid && m.mentionedJid.length > 0) {
                 targetRaw = m.mentionedJid[0]
             } else if (m.quoted) {
                 targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
+                targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
             }
         }
 
-        // 3. Resolver objetivo usando solo conn.findUserId
-        const target = await resolveParticipant(targetRaw, conn)
+        const target = await resolveParticipant(targetRaw, targetPn, conn)
 
         if (!target.number && extractedNumber) {
             target.number = extractedNumber
