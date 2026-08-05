@@ -15,13 +15,9 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-/**
- * Resuelve y extrae el identificador directo (JID/LID) y el número telefónico limpio.
- */
 async function resolveParticipant(rawId, altPn, conn) {
     if (!rawId && !altPn) return { mentionId: '', tagText: '', phoneNumber: '' }
 
-    // 1. Si Baileys proporciona el Phone Number real en senderPn / participantAlt
     if (altPn) {
         const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
         if (cleanPn) {
@@ -35,7 +31,6 @@ async function resolveParticipant(rawId, altPn, conn) {
 
     const str = String(rawId || '').split(':')[0]
 
-    // 2. Intentar obtener mapping con sock.findUserId si es un LID puro o número
     if (conn && typeof conn.findUserId === 'function') {
         try {
             const cleanQuery = str.split('@')[0].replace(/[^0-9]/g, '')
@@ -51,11 +46,9 @@ async function resolveParticipant(rawId, altPn, conn) {
                 }
             }
         } catch (e) {
-            // Silenciar fallo si no hay coincidencia
         }
     }
 
-    // 3. Fallback: usar el ID directo entregado por WhatsApp
     const cleanNumber = str.split('@')[0].replace(/[^0-9]/g, '') || 'Desconocido'
     return {
         mentionId: str,
@@ -76,12 +69,10 @@ export default {
         const botData = getSubbotConfig(rawJid, config)
         const botName = botData.name || config.botName || 'Cuervo'
 
-        // 1. Resolver emisor (el que manda el mensaje)
         const senderRaw = m.sender || m.key.participant || m.participant
         const senderPn = m.key?.senderPn || m.key?.participantAlt
         const sender = await resolveParticipant(senderRaw, senderPn, conn)
 
-        // 2. Extraer objetivo (mencionado o citado)
         let targetRaw = null
         let targetPn = null
 
@@ -98,15 +89,10 @@ export default {
 
         const target = await resolveParticipant(targetRaw, targetPn, conn)
 
-        // Si no mencionó ni citó a nadie
         if (!target.mentionId) {
-            return m.reply('⚠️ Debes mencionar a `@usuario` o responder a un mensaje de la persona que buscas.')
-        }
-
-        // Arreglo con ambas menciones activas
+            return m.reply('⚠️ Debes mencionar a `@usuario` o responder a un mensaje de la persona que 
         const mentions = [sender.mentionId, target.mentionId]
 
-        // Mensaje detallado con la mención azul y sus números formateados
         const messageText = 
             `🔍 *BÚSQUEDA EN PROCESO*\n\n` +
             `👤 *Buscador:* @${sender.tagText}\n` +
