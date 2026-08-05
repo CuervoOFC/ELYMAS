@@ -7,27 +7,28 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/general/buscando.js
-ʚĭɞ ೃ funcion :: mención doble (emisor y objetivo)
+ʚĭɞ r codigo :: plugins/buscando.js
+ʚĭɞ ೃ funcion :: muestra y etiqueta los números del emisor y el citado/mencionado
 ──────✧✦✧──────
 */
 
-import config from '../../config.js'
-import { getSubbotConfig } from '../../lib/subbotconfig.js'
+import config from '../config.js'
+import { getSubbotConfig } from '../lib/subbotconfig.js'
 
 /**
- * Resuelve y extrae el identificador directo (JID o LID) para menciones en Baileys.
+ * Resuelve y extrae el identificador directo (JID/LID) y el número telefónico limpio.
  */
 async function resolveParticipant(rawId, altPn, conn) {
-    if (!rawId && !altPn) return { mentionId: '', tagText: '' }
+    if (!rawId && !altPn) return { mentionId: '', tagText: '', phoneNumber: '' }
 
-    // 1. Si Baileys proporciona el Phone Number real en senderPn / participantAlt, usar ese
+    // 1. Si Baileys proporciona el Phone Number real en senderPn / participantAlt
     if (altPn) {
         const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
         if (cleanPn) {
             return {
                 mentionId: `${cleanPn}@s.whatsapp.net`,
-                tagText: cleanPn
+                tagText: cleanPn,
+                phoneNumber: `+${cleanPn}`
             }
         }
     }
@@ -44,7 +45,8 @@ async function resolveParticipant(rawId, altPn, conn) {
                     const pn = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
                     return {
                         mentionId: res.phoneNumber,
-                        tagText: pn
+                        tagText: pn,
+                        phoneNumber: `+${pn}`
                     }
                 }
             }
@@ -54,10 +56,11 @@ async function resolveParticipant(rawId, altPn, conn) {
     }
 
     // 3. Fallback: usar el ID directo entregado por WhatsApp
-    const tag = str.split('@')[0].replace(/[^0-9]/g, '') || 'usuario'
+    const cleanNumber = str.split('@')[0].replace(/[^0-9]/g, '') || 'Desconocido'
     return {
         mentionId: str,
-        tagText: tag
+        tagText: cleanNumber,
+        phoneNumber: cleanNumber !== 'Desconocido' ? `+${cleanNumber}` : 'No disponible'
     }
 }
 
@@ -97,19 +100,22 @@ export default {
 
         // Si no mencionó ni citó a nadie
         if (!target.mentionId) {
-            return m.reply('⚠️ Debes mencionar `@usuario` o responder a un mensaje de la persona que estás buscando.')
+            return m.reply('⚠️ Debes mencionar a `@usuario` o responder a un mensaje de la persona que buscas.')
         }
 
-        // Construir arreglo de menciones para WhatsApp
+        // Arreglo con ambas menciones activas
         const mentions = [sender.mentionId, target.mentionId]
 
-        // Mensaje formateado
+        // Mensaje detallado con la mención azul y sus números formateados
         const messageText = 
             `🔍 *BÚSQUEDA EN PROCESO*\n\n` +
-            `👀 @${sender.tagText} está buscando a @${target.tagText} 📢\n\n` +
+            `👤 *Buscador:* @${sender.tagText}\n` +
+            `📱 *Número:* ${sender.phoneNumber}\n\n` +
+            `🎯 *Buscado:* @${target.tagText}\n` +
+            `📞 *Número:* ${target.phoneNumber}\n\n` +
+            `📢 _@${sender.tagText} está buscando a @${target.tagText}_ 😏\n\n` +
             `🤖 Bot: *${botName}*`
 
-        // Enviar mensaje etiquetando a ambos
         await conn.sendMessage(m.chat, {
             text: messageText,
             mentions: mentions
