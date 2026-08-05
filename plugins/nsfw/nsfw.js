@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/nsfw/interacciones.js
-ʚĭɞ ೃ funcion :: comandos nsfw con resolucion nativa Baileys v7 (senderPn / findUserId)
+ʚĭɞ ೃ funcion :: comandos nsfw con soporte directo para LIDs y JIDs en Baileys v7
 ──────✧✦✧──────
 */
 
@@ -21,53 +21,49 @@ const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
 /**
- * Resuelve el JID real, LID y el número telefónico utilizando las
- * propiedades nativas de Baileys v7 y limpiando la entrada de findUserId.
+ * Resuelve y extrae el identificador directo (JID o LID) para menciones en Baileys.
  */
 async function resolveParticipant(rawId, altPn, conn) {
-    if (!rawId && !altPn) return { jid: '', lid: '', number: '' }
+    if (!rawId && !altPn) return { mentionId: '', tagText: '' }
 
-    let jid = ''
-    let lid = ''
-    let number = ''
-
-    // 1. Si Baileys ya nos proporcionó el Phone Number real en senderPn / participantAlt
+    // 1. Si Baileys proporciona el Phone Number real en senderPn / participantAlt, usar ese
     if (altPn) {
         const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
         if (cleanPn) {
-            jid = `${cleanPn}@s.whatsapp.net`
-            number = cleanPn
+            return {
+                mentionId: `${cleanPn}@s.whatsapp.net`,
+                tagText: cleanPn
+            }
         }
     }
 
     const str = String(rawId || '').split(':')[0]
 
-    if (str.includes('@s.whatsapp.net')) {
-        jid = str
-        number = str.split('@')[0].replace(/[^0-9]/g, '')
-    } else if (str.includes('@lid')) {
-        lid = str
-    }
-
-    // 2. Si solo tenemos el número o LID y no se ha resuelto con senderPn, consultar a findUserId
-    if (!number && conn && typeof conn.findUserId === 'function') {
+    // 2. Intentar obtener mapping con sock.findUserId si es un LID puro o número
+    if (conn && typeof conn.findUserId === 'function') {
         try {
-            // findUserId requiere la cadena limpia solo con dígitos según la doc de @itsliaaa/baileys
-            const rawTarget = number || str.split('@')[0].replace(/[^0-9]/g, '')
-            if (rawTarget && rawTarget.length >= 8) {
-                const res = await conn.findUserId(rawTarget)
+            const cleanQuery = str.split('@')[0].replace(/[^0-9]/g, '')
+            if (cleanQuery && cleanQuery.length >= 8) {
+                const res = await conn.findUserId(cleanQuery)
                 if (res?.phoneNumber) {
-                    jid = res.phoneNumber
-                    number = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
+                    const pn = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
+                    return {
+                        mentionId: res.phoneNumber,
+                        tagText: pn
+                    }
                 }
-                if (res?.lid) lid = res.lid
             }
         } catch (e) {
-            // Silenciar fallo si no se encuentra mapeo
+            // Silenciar fallo
         }
     }
 
-    return { jid, lid, number }
+    // 3. Fallback: usar el ID directo entregado por WhatsApp (soporta @lid y @s.whatsapp.net)
+    const tag = str.split('@')[0].replace(/[^0-9]/g, '') || 'usuario'
+    return {
+        mentionId: str,
+        tagText: tag
+    }
 }
 
 const commandTexts = {
@@ -137,7 +133,7 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // 1. Emisor (remitente): Leer id y altPn nativos de Baileys v7
+        // 1. Resolver emisor (sender)
         const senderRaw = m.sender || m.key.participant || m.participant
         const senderPn = m.key?.senderPn || m.key?.participantAlt
         const sender = await resolveParticipant(senderRaw, senderPn, conn)
@@ -145,18 +141,18 @@ export default {
         // 2. Extraer objetivo
         let targetRaw = null
         let targetPn = null
-        let extractedNumber = ''
+        let manualNumber = ''
 
-        // Prioridad A: Número directo en los argumentos del texto
+        // Prioridad A: Número escrito manualmente en los argumentos (.cum @1587...)
         if (args.length > 0) {
             const cleanArg = args.join(' ').replace(/[^0-9]/g, '')
-            if (cleanArg.length >= 10) {
-                extractedNumber = cleanArg
+            if (cleanArg.length >= 8) {
+                manualNumber = cleanArg
                 targetRaw = `${cleanArg}@s.whatsapp.net`
             }
         }
 
-        // Prioridad B: Mencionado o Citado
+        // Prioridad B: Menciones de Baileys o mensajes citados
         if (!targetRaw) {
             if (m.mentionedJid && m.mentionedJid.length > 0) {
                 targetRaw = m.mentionedJid[0]
@@ -168,9 +164,9 @@ export default {
 
         const target = await resolveParticipant(targetRaw, targetPn, conn)
 
-        if (!target.number && extractedNumber) {
-            target.number = extractedNumber
-            if (!target.jid) target.jid = `${extractedNumber}@s.whatsapp.net`
+        if (manualNumber) {
+            target.tagText = manualNumber
+            target.mentionId = `${manualNumber}@s.whatsapp.net`
         }
 
         await m.reply('🔞 Cargando contenido...')
@@ -186,25 +182,24 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
+            // Array de menciones dinámico
             const mentions = []
-            if (sender.jid) mentions.push(sender.jid)
-            if (sender.lid) mentions.push(sender.lid)
+            if (sender.mentionId) mentions.push(sender.mentionId)
 
             let captionText = ''
 
-            if (target.number) {
-                if (target.jid) mentions.push(target.jid)
-                if (target.lid) mentions.push(target.lid)
+            if (target.mentionId) {
+                mentions.push(target.mentionId)
 
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${sender.number} *${commandInfo.action}* @${target.number}\n\n` +
+                    `${commandInfo.emoji} @${sender.tagText} *${commandInfo.action}* @${target.tagText}\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             } else {
                 captionText = 
                     `🔞 *NSFW - ${usedCommand.toUpperCase()}*\n\n` +
-                    `${commandInfo.emoji} @${sender.number} *${commandInfo.action}* alguien especial 😏\n\n` +
+                    `${commandInfo.emoji} @${sender.tagText} *${commandInfo.action}* alguien especial 😏\n\n` +
                     `💬 _${description}_\n\n` +
                     `🤖 Bot: *${botName}*`
             }
