@@ -20,13 +20,9 @@ import axios from 'axios'
 const API_KEY = 'evogb-WzR3kPpa'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
-/**
- * Resuelve y extrae el identificador directo (JID o LID) para menciones en Baileys.
- */
 async function resolveParticipant(rawId, altPn, conn) {
     if (!rawId && !altPn) return { mentionId: '', tagText: '' }
 
-    // 1. Si Baileys proporciona el Phone Number real en senderPn / participantAlt, usar ese
     if (altPn) {
         const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
         if (cleanPn) {
@@ -39,7 +35,6 @@ async function resolveParticipant(rawId, altPn, conn) {
 
     const str = String(rawId || '').split(':')[0]
 
-    // 2. Intentar obtener mapping con sock.findUserId si es un LID puro o número
     if (conn && typeof conn.findUserId === 'function') {
         try {
             const cleanQuery = str.split('@')[0].replace(/[^0-9]/g, '')
@@ -54,11 +49,9 @@ async function resolveParticipant(rawId, altPn, conn) {
                 }
             }
         } catch (e) {
-            // Silenciar fallo si no hay coincidencia
         }
     }
 
-    // 3. Fallback: usar el ID directo entregado por WhatsApp
     const tag = str.split('@')[0].replace(/[^0-9]/g, '') || 'usuario'
     return {
         mentionId: str,
@@ -104,7 +97,7 @@ const commandTexts = {
 const allCommands = Object.keys(commandTexts)
 
 export default {
-    command: [...allCommands, 'nsfwlist', 'listansfw'],
+    command: ['nsfwlist', 'listansfw', ...allCommands],
 
     async run(m, { conn }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
@@ -133,25 +126,21 @@ export default {
         const commandInfo = commandTexts[usedCommand]
         if (!commandInfo) return
 
-        // 1. Resolver emisor (sender)
         const senderRaw = m.sender || m.key.participant || m.participant
         const senderPn = m.key?.senderPn || m.key?.participantAlt
         const sender = await resolveParticipant(senderRaw, senderPn, conn)
 
-        // 2. Extraer objetivo
         let targetRaw = null
         let targetPn = null
-
-        // Extraer menciones con metadatos nativos de Baileys v7
+        
         const contextInfo = m.message?.extendedTextMessage?.contextInfo || m.msg?.contextInfo
         const mentionedJids = m.mentionedJid || contextInfo?.mentionedJid || []
 
         if (mentionedJids.length > 0) {
             targetRaw = mentionedJids[0]
-            // Extraer el Phone Number alternativo si la librería lo incluyó en contextInfo
+    
             targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
         } else if (m.quoted) {
-            // Cita / Reply (que ya sabemos que funciona bien)
             targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
             targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
         }
@@ -171,7 +160,6 @@ export default {
             const videoUrl = response.data.result
             const description = response.data.description || commandInfo.action
 
-            // Menciones dinámicas
             const mentions = []
             if (sender.mentionId) mentions.push(sender.mentionId)
 
