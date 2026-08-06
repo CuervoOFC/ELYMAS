@@ -8,13 +8,46 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
 ʚĭɞ 💤 codigo :: plugins/grupos/antilink.js
-ʚĭɞ 💤 funcion :: antilink sin verificacion previa de bot admin
+ʚĭɞ 💤 funcion :: antilink con resolucion de LID a JID real
 ──────✧✦✧──────
 */
 
 import { getGroup, getGroups, saveGroups } from '../../lib/database.js'
 
 const linkRegex = /(chat\.whatsapp\.com\/[0-9A-Za-z]{20,24}|wa\.me\/[0-9A-Za-z]|whatsapp\.com\/channel\/[0-9A-Za-z]{20,24})/i
+
+// Función para resolver LID a JID/Número real
+async function resolveRealJid(rawId, altPn, conn) {
+    if (!rawId && !altPn) return null
+
+    if (altPn) {
+        const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
+        if (cleanPn) return `${cleanPn}@s.whatsapp.net`
+    }
+
+    const str = String(rawId || '').split(':')[0]
+
+    // Si ya viene con el formato estándar @s.whatsapp.net y no es LID
+    if (str.endsWith('@s.whatsapp.net') && !str.includes('@lid')) {
+        return str
+    }
+
+    if (conn && typeof conn.findUserId === 'function') {
+        try {
+            const cleanQuery = str.split('@')[0].replace(/[^0-9]/g, '')
+            if (cleanQuery && cleanQuery.length >= 8) {
+                const res = await conn.findUserId(cleanQuery)
+                if (res?.phoneNumber) {
+                    const pn = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
+                    return `${pn}@s.whatsapp.net`
+                }
+            }
+        } catch (e) {}
+    }
+
+    const cleanNumber = str.split('@')[0].replace(/[^0-9]/g, '')
+    return cleanNumber ? `${cleanNumber}@s.whatsapp.net` : null
+}
 
 async function processAntiLink(m, conn, isOwner) {
     if (!m || !m.isGroup) return
@@ -39,36 +72,46 @@ async function processAntiLink(m, conn, isOwner) {
         if (!groupMetadata) return
 
         const participants = groupMetadata.participants || []
-        const rawSender = m.sender || m.key.participant || ''
-        const cleanSenderNumber = rawSender.split(':')[0].split('@')[0]
-        const senderJid = `${cleanSenderNumber}@s.whatsapp.net`
 
-        // Eximir a los Administradores u Owner del Bot
+        // Obtener remitente primario
+        const senderRaw = m.sender || m.key.participant || m.participant
+        const senderPn = m.key?.senderPn || m.key?.participantAlt
+
+        // Resolver a JID Real (Elimina el problema del LID)
+        const realJid = await resolveRealJid(senderRaw, senderPn, conn)
+        if (!realJid) return
+
+        const cleanNumber = realJid.split('@')[0]
+
+        // 1. Eximir Administradores u Owner del Bot
         const isUserAdmin = participants.some(p => {
             const pNum = (p.id || p.jid || '').split(':')[0].split('@')[0]
-            return pNum === cleanSenderNumber && (p.admin === 'admin' || p.admin === 'superadmin')
+            return pNum === cleanNumber && (p.admin === 'admin' || p.admin === 'superadmin')
         })
 
         if (isUserAdmin || isOwner) return
 
-        // 1. Intentar borrar el mensaje directamente
+        // 2. Intentar borrar el mensaje (Se le pasa tanto el JID real como el LID por compatibilidad)
         await conn.sendMessage(m.chat, {
             delete: {
                 remoteJid: m.chat,
                 fromMe: m.key.fromMe || false,
                 id: m.key.id,
-                participant: m.key.participant || senderJid
+                participant: m.key.participant || senderRaw
             }
         }).catch(() => conn.sendMessage(m.chat, { delete: m.key }))
 
-        // 2. Advertencia en el grupo
+        // 3. Advertencia en el grupo citando el JID real
         await conn.sendMessage(m.chat, {
-            text: `🚫 *@${cleanSenderNumber}*, los enlaces no están permitidos en este grupo.`,
-            mentions: [senderJid]
+            text: `🚫 *@${cleanNumber}*, los enlaces no están permitidos en este grupo.`,
+            mentions: [realJid]
         })
 
-        // 3. Expulsar al usuario
-        await conn.groupParticipantsUpdate(m.chat, [senderJid], 'remove')
+        // 4. Expulsar al usuario con su JID real (@s.whatsapp.net)
+        await conn.groupParticipantsUpdate(m.chat, [realJid], 'remove').catch(async () => {
+            // Reintento de respaldo por si el servidor exige la ID cruda
+            await conn.groupParticipantsUpdate(m.chat, [senderRaw], 'remove')
+        })
 
     } catch (err) {
         console.error('❌ Error en AntiLink:', err)
