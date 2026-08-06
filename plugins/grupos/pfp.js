@@ -12,8 +12,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-import config from '../config.js'
-import { getSubbotConfig } from '../lib/subbotconfig.js'
+import config from '../../config.js'
+import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 // Foto por defecto cuando el usuario no tiene foto pública
 const DEFAULT_PFP = 'https://i.imgur.com/2w3A80k.jpeg'
