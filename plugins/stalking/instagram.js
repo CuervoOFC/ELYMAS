@@ -34,7 +34,7 @@ async function uploadAvatarUrl(url) {
 }
 
 export default {
-    command: ['igstalk', 'instagramstalk', 'ig'],
+    command: ['igstalk', 'instagramstalk'],
 
     async run(m, { conn, args }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
