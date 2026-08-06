@@ -8,13 +8,15 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
 ʚĭɞ 💤 codigo :: plugins/grupos/antilink.js
-ʚĭɞ 💤 funcion :: antilink con soporte para Tarjetas de Invitación y enlaces directos
+ʚĭɞ 💤 funcion :: antilink optimizado con ignorado de link propio
 ──────✧✦✧──────
 */
 
 import { getGroup, getGroups, saveGroups } from '../../lib/database.js'
 
-const linkRegex = /(chat\.whatsapp\.com\/[0-9A-Za-z]{20,24}|wa\.me\/[0-9A-Za-z]|whatsapp\.com\/channel\/[0-9A-Za-z]{20,24})/i
+// Detecta links de chat de WhatsApp, canales de WhatsApp y tarjetas de grupo
+const linkRegex = /chat\.whatsapp\.com\/[0-9A-Za-z]{20,24}/i
+const linkRegex1 = /whatsapp\.com\/channel\/[0-9A-Za-z]{20,24}/i
 
 export default {
     command: ['antilink', 'anti-link'],
@@ -76,14 +78,7 @@ export default {
         const groupData = getGroup(m.chat)
         if (!groupData || !groupData.antilink) return
 
-        // 1. Detección de Tarjetas de Invitación a Grupos (Group Invite Messages)
-        const isGroupInviteCard = Boolean(
-            m.message?.groupInviteMessage || 
-            m.msg?.groupInviteMessage ||
-            m.mtype === 'groupInviteMessage'
-        )
-
-        // 2. Extracción de texto normal para URLs escritas
+        // Extraer texto o detectar tarjeta de grupo
         const text = m.text || 
                      m.body || 
                      m.caption || 
@@ -92,10 +87,15 @@ export default {
                      m.message?.conversation || 
                      m.message?.extendedTextMessage?.text || ''
 
-        const containsLink = linkRegex.test(text)
+        const isGroupInviteCard = Boolean(
+            m.message?.groupInviteMessage || 
+            m.msg?.groupInviteMessage ||
+            m.mtype === 'groupInviteMessage'
+        )
 
-        // Si no es tarjeta de invitación ni contiene un enlace en texto, ignorar
-        if (!isGroupInviteCard && !containsLink) return
+        const isLink = linkRegex.test(text) || linkRegex1.test(text)
+
+        if (!isLink && !isGroupInviteCard) return
 
         try {
             const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null)
@@ -103,12 +103,12 @@ export default {
 
             const participants = groupMetadata.participants || []
 
-            // Obtener remitente sin subdispositivos (:1, :2)
+            // Formatear JIDs limpios
             const rawSender = m.sender || m.key.participant || ''
             const cleanSenderNumber = rawSender.split(':')[0].split('@')[0]
             const senderJid = `${cleanSenderNumber}@s.whatsapp.net`
 
-            // Verificar si el remitente es Admin u Owner
+            // Eximir Administradores u Owner del Bot
             const isUserAdmin = participants.some(p => {
                 const pNum = (p.id || p.jid || '').split(':')[0].split('@')[0]
                 return pNum === cleanSenderNumber && (p.admin === 'admin' || p.admin === 'superadmin')
@@ -116,7 +116,15 @@ export default {
 
             if (isUserAdmin || isOwner) return
 
-            // Verificar si el BOT es Admin
+            // Comprobar si es el link propio de este mismo grupo
+            if (isLink && !isGroupInviteCard) {
+                try {
+                    const ownCode = await conn.groupInviteCode(m.chat)
+                    if (ownCode && text.includes(ownCode)) return // Ignorar si es el link del grupo actual
+                } catch { }
+            }
+
+            // Verificar si el BOT tiene permisos de Admin
             const botRawJid = conn.user?.jid || conn.user?.id || ''
             const botCleanNumber = botRawJid.split(':')[0].split('@')[0]
             const isBotAdmin = participants.some(p => {
@@ -126,12 +134,13 @@ export default {
 
             if (!isBotAdmin) {
                 await conn.sendMessage(m.chat, {
-                    text: '⚠️ Se detectó una invitación/enlace, pero no puedo borrarla porque **NO soy Administrador**.'
+                    text: `⚠️ *@${cleanSenderNumber}* envió un enlace, pero no puedo eliminarlo porque **NO soy Administrador**.`,
+                    mentions: [senderJid]
                 })
                 return
             }
 
-            // Eliminar el mensaje (admite mensajes propios de subbots o de terceros)
+            // 1. Eliminar mensaje de enlace/tarjeta
             await conn.sendMessage(m.chat, {
                 delete: {
                     remoteJid: m.chat,
@@ -143,17 +152,17 @@ export default {
                 await conn.sendMessage(m.chat, { delete: m.key })
             })
 
-            // Notificación
+            // 2. Avisar en el chat
             await conn.sendMessage(m.chat, {
-                text: `⚠️ *@${cleanSenderNumber}*, los enlaces e invitaciones a grupos no están permitidos.`,
+                text: `🚫 Hey *@${cleanSenderNumber}*, los enlaces no están permitidos aquí.`,
                 mentions: [senderJid]
             })
 
-            // Expulsión del grupo
+            // 3. Expulsar al usuario infractor
             await conn.groupParticipantsUpdate(m.chat, [senderJid], 'remove')
 
         } catch (err) {
-            console.error('❌ Error en el ejecutor AntiLink:', err)
+            console.error('❌ Error en AntiLink:', err)
         }
     }
 }
