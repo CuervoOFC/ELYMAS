@@ -49,7 +49,7 @@ export default {
                 '│\n' +
                 '│ ❌ Ingresa el usuario de GitHub a consultar.\n' +
                 '│\n' +
-                '│ 📌 *Ejemplo:* `.ghstalk CuervoOFC`\n' +
+                '│ 📌 *Ejemplo:* `.ghstalk <nombre usuario>`\n' +
                 '╰──────────────'
             )
         }
