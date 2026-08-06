@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/herramientas/quote.js
-ʚĭɞ ೃ funcion :: genera quote y convierte localmente a sticker con metadatos oficiales
+ʚĭɞ ೃ funcion :: genera quote usando el nombre y foto del etiquetado/citado con conversion a sticker
 ──────✧✦✧──────
 */
 
@@ -102,7 +102,7 @@ async function uploadMedia(mediaBuffer, mime) {
 async function resolveUserTarget(m, conn) {
     let targetRaw = null
     let targetPn = null
-    let targetName = 'Usuario'
+    let targetName = ''
 
     const contextInfo = m.message?.extendedTextMessage?.contextInfo || m.msg?.contextInfo
     const mentionedJids = m.mentionedJid || contextInfo?.mentionedJid || []
@@ -110,23 +110,32 @@ async function resolveUserTarget(m, conn) {
     if (mentionedJids.length > 0) {
         targetRaw = mentionedJids[0]
         targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
-        
+
         const contact = conn.contacts?.[targetRaw]
-        targetName = contact?.name || contact?.notify || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
+        targetName = contact?.name || contact?.notify || contact?.vname || ''
     } else if (m.quoted) {
         targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
         targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
-        targetName = m.quoted.pushName || m.quoted.name || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
+        targetName = m.quoted.pushName || m.quoted.name || ''
     } else {
         targetRaw = m.sender || m.key.participant || m.participant
         targetPn = m.key?.senderPn || m.key?.participantAlt
-        targetName = m.pushName || m.name || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
+        targetName = m.pushName || m.name || ''
     }
 
     let jid = targetRaw
     if (targetPn) {
         const cleanPn = String(targetPn).split('@')[0].replace(/[^0-9]/g, '')
         if (cleanPn) jid = `${cleanPn}@s.whatsapp.net`
+    }
+
+    if (!targetName && conn.contacts?.[jid]) {
+        const c = conn.contacts[jid]
+        targetName = c.name || c.notify || c.vname || ''
+    }
+
+    if (!targetName) {
+        targetName = jid.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
     }
 
     return {
@@ -162,7 +171,7 @@ export default {
                 '│\n' +
                 '│ 📌 *Ejemplos:*\n' +
                 '│ • `.qc Hola a todos` (Tus datos)\n' +
-                '│ • `.qc @usuario Hola` (Datos de la otra persona)\n' +
+                '│ • `.qc @usuario Hola` (Usa el nombre y foto del etiquetado)\n' +
                 '╰──────────────'
             )
         }
