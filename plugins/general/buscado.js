@@ -12,8 +12,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-import config from '../config.js'
-import { getSubbotConfig } from '../lib/subbotconfig.js'
+import config from '../../config.js'
+import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 async function resolveParticipant(rawId, altPn, conn) {
     if (!rawId && !altPn) return { mentionId: '', tagText: '', phoneNumber: '' }
