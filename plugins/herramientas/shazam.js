@@ -7,16 +7,18 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ r codigo :: plugins/herramientas/shazam.js
-ʚĭɞ ೃ funcion :: identificar música vía EvoGB Shazam API con subida a EvoGB Files
+ʚĭɞ ೃ codigo :: plugins/herramientas/shazam.js
+ʚĭɞ ೃ funcion :: identificar música vía EvoGB Shazam API con subida a EvoGB Upload API
 ──────✧✦✧──────
 */
 
+import { downloadMediaMessage } from '@itsliaaa/baileys'
 import axios from 'axios'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 
 export default {
     command: ['shazam', 'whatmusic', 'quemusica', 'quecancion'],
@@ -27,11 +29,20 @@ export default {
         const botName = botData.name || config.botName || 'Cuervo'
 
         const q = m.quoted ? m.quoted : m
-        const mime = (q.msg || q).mimetype || q.mediaType || ''
-        const mtype = q.mtype || ''
+        const rawMessage = q.message || q.msg || q
 
-        // Detección corregida para soportar mtype y mimetype
-        const isMedia = /audio|video/.test(mime) || /audioMessage|videoMessage/.test(mtype)
+        // Extracción exacta del mimetype al estilo upload.js
+        const mime = (
+            rawMessage.imageMessage?.mimetype ||
+            rawMessage.videoMessage?.mimetype ||
+            rawMessage.audioMessage?.mimetype ||
+            rawMessage.documentMessage?.mimetype ||
+            q.mimetype ||
+            ''
+        )
+
+        // Validación permitiendo tanto audios como videos o documentos con audio
+        const isMedia = /audio|video/.test(mime) || /audioMessage|videoMessage/.test(q.mtype || '')
 
         if (!isMedia) {
             return m.reply(
@@ -47,21 +58,38 @@ export default {
         await m.reply('🎧 *Escuchando y analizando audio con Shazam...*')
 
         try {
-            // 1. Descargar el archivo de audio/video
-            const mediaBuffer = await q.download()
-            if (!mediaBuffer) {
-                return m.reply('❌ No se pudo descargar el archivo de audio/video.')
+            // 1. Descarga del buffer implementando la fallback de upload.js
+            let mediaBuffer
+            try {
+                mediaBuffer = await downloadMediaMessage(
+                    q,
+                    'buffer',
+                    {},
+                    { logger: conn.logger, reuploadRequest: conn.updateMediaMessage }
+                )
+            } catch (dlErr) {
+                if (typeof q.download === 'function') {
+                    mediaBuffer = await q.download()
+                } else if (typeof conn.downloadMediaMessage === 'function') {
+                    mediaBuffer = await conn.downloadMediaMessage(q)
+                } else {
+                    throw dlErr
+                }
             }
 
-            // 2. Subir el archivo al servidor de EvoGB Files
-            const fileUrl = await uploadMediaToEvoGB(mediaBuffer, mime || 'video/mp4')
+            if (!mediaBuffer) {
+                return m.reply('❌ No se pudo descargar el archivo del mensaje respondido.')
+            }
+
+            // 2. Subir archivo a la API oficial de EvoGB Upload
+            const fileUrl = await uploadToEvoGB(mediaBuffer, mime)
             if (!fileUrl) {
                 return m.reply('❌ Error al subir el archivo multimedia a EvoGB.')
             }
 
             // 3. Consultar la API de EvoGB Shazam
             const apiUrl = `https://api.evogb.org/tools/whatmusic-shazam?method=url&url=${encodeURIComponent(fileUrl)}&key=${EVO_KEY}`
-            const res = await axios.get(apiUrl, { timeout: 20000 })
+            const res = await axios.get(apiUrl, { timeout: 25000 })
 
             if (!res.data?.status || !res.data?.data?.info) {
                 return m.reply('❌ No se encontró ninguna coincidencia para este audio.')
@@ -88,7 +116,7 @@ export default {
 
             const coverUrl = media?.cover_hd || media?.cover
 
-            // 4. Enviar imagen del Cover HD con la información
+            // 4. Enviar imagen con portada HD e información
             if (coverUrl) {
                 await conn.sendMessage(m.chat, {
                     image: { url: coverUrl },
@@ -98,7 +126,7 @@ export default {
                 await m.reply(captionText)
             }
 
-            // 5. Enviar el Preview Audio si está disponible
+            // 5. Enviar el audio de prueba si existe
             if (media?.preview_audio) {
                 await conn.sendMessage(m.chat, {
                     audio: { url: media.preview_audio },
@@ -114,31 +142,28 @@ export default {
     }
 }
 
-// Función para subir el buffer a files.evogb.win
-async function uploadMediaToEvoGB(buffer, mime) {
+// Subida a EvoGB Upload API según la estructura de tu upload.js
+async function uploadToEvoGB(buffer, mime) {
     try {
-        const { FormData } = await import('form-data')
-        const form = new FormData()
-        const ext = mime.includes('video') ? 'mp4' : 'mp3'
-        
-        form.append('file', buffer, { 
-            filename: `media_${Date.now()}.${ext}`, 
-            contentType: mime || 'audio/mpeg' 
+        const formData = new FormData()
+        const ext = mime.split('/')[1]?.split(';')[0] || 'mp4'
+        const blob = new Blob([buffer], { type: mime || 'video/mp4' })
+        formData.append('file', blob, `file.${ext}`)
+
+        const res = await fetch(`${EVO_UPLOAD_API}?key=${EVO_KEY}`, {
+            method: 'POST',
+            body: formData
         })
 
-        const res = await axios.post('https://files.evogb.win/upload', form, {
-            headers: form.getHeaders(),
-            timeout: 15000
-        })
+        if (!res.ok) return null
 
-        if (res.data?.url) {
-            return res.data.url
-        } else if (res.data?.data?.url) {
-            return res.data.data.url
+        const json = await res.json()
+        if (json.status && json.url) {
+            return json.url
         }
         return null
     } catch (err) {
-        console.error('❌ Error al subir archivo a EvoGB:', err?.message || err)
+        console.error('❌ Error al subir a EvoGB:', err)
         return null
     }
 }
