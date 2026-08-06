@@ -7,13 +7,13 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ r codigo :: plugins/buscando.js
+ʚĭɞ r codigo :: plugins/general/buscando.js
 ʚĭɞ ೃ funcion :: muestra y etiqueta los números del emisor y el citado/mencionado
 ──────✧✦✧──────
 */
 
-import config from '../../config.js'
-import { getSubbotConfig } from '../../lib/subbotconfig.js'
+import config from '../config.js'
+import { getSubbotConfig } from '../lib/subbotconfig.js'
 
 async function resolveParticipant(rawId, altPn, conn) {
     if (!rawId && !altPn) return { mentionId: '', tagText: '', phoneNumber: '' }
@@ -48,7 +48,6 @@ async function resolveParticipant(rawId, altPn, conn) {
         } catch (e) {
         }
     }
-
     const cleanNumber = str.split('@')[0].replace(/[^0-9]/g, '') || 'Desconocido'
     return {
         mentionId: str,
@@ -90,7 +89,9 @@ export default {
         const target = await resolveParticipant(targetRaw, targetPn, conn)
 
         if (!target.mentionId) {
-            return m.reply('⚠️ Debes mencionar a `@usuario` o responder a un mensaje de la persona que 
+            return m.reply('⚠️ Debes mencionar a `@usuario` o responder a un mensaje de la persona que buscas.')
+        }
+
         const mentions = [sender.mentionId, target.mentionId]
 
         const messageText = 
