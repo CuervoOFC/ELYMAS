@@ -20,7 +20,7 @@ const STELLAR_KEY = 'api-COTah'
 const DEFAULT_AVATAR = 'https://i.imgur.com/2w3A80k.jpeg'
 
 export default {
-    command: ['tiktokstalk', 'ttstalk', 'tiktok'],
+    command: ['tiktokstalk', 'ttstalk'],
 
     async run(m, { conn, args }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
