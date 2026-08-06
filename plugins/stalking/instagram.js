@@ -49,7 +49,7 @@ export default {
                 '│\n' +
                 '│ ❌ Ingresa el usuario de Instagram a consultar.\n' +
                 '│\n' +
-                '│ 📌 *Ejemplo:* `.igstalk cuervoofc404`\n' +
+                '│ 📌 *Ejemplo:* `.igstalk <nombre usuario>`\n' +
                 '╰──────────────'
             )
         }
