@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
 ʚĭɞ 💤 codigo :: plugins/grupos/antinsfw.js
-ʚĭɞ 💤 funcion :: Detección separada de Stickers Animados (MP4) y Estáticos (PNG)
+ʚĭɞ 💤 funcion :: Subida nativa en WebP + Conversión adaptativa a MP4/PNG
 ──────✧✦✧──────
 */
 
@@ -23,12 +23,12 @@ const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 const MAX_SIZE_EVO = 150 * 1024 * 1024
 const MAX_SIZE_STELLAR = 40 * 1024 * 1024
 
-// 1. Subida principal a EvoGB
+// 1. Subida del archivo WebP/Media tal como viene
 async function uploadToEvo(mediaBuffer, mime, fileSize) {
     if (fileSize > MAX_SIZE_EVO) throw new Error('Excede límite EvoGB')
 
     const formData = new FormData()
-    let ext = mime.split('/')[1]?.split(';')[0] || 'bin'
+    let ext = mime.split('/')[1]?.split(';')[0] || 'webp'
     const blob = new Blob([mediaBuffer], { type: mime })
     formData.append('file', blob, `file.${ext}`)
 
@@ -44,12 +44,12 @@ async function uploadToEvo(mediaBuffer, mime, fileSize) {
     return json.url
 }
 
-// 2. Subida de respaldo a StellarWA
+// Subida de respaldo en caso de fallo
 async function uploadToStellar(mediaBuffer, mime, fileSize) {
     if (fileSize > MAX_SIZE_STELLAR) throw new Error('Excede límite StellarWA')
 
     const formData = new FormData()
-    const ext = mime.split('/')[1]?.split(';')[0] || 'bin'
+    const ext = mime.split('/')[1]?.split(';')[0] || 'webp'
     const blob = new Blob([mediaBuffer], { type: mime })
     formData.append('file', blob, `file.${ext}`)
 
@@ -65,8 +65,8 @@ async function uploadToStellar(mediaBuffer, mime, fileSize) {
     return json.file.publicUrl
 }
 
-// 3. Conversión de archivos a la API (MP4 para movimiento, PNG para estáticos)
-async function convertMedia(mediaUrl, targetFormat) {
+// 2. Convertir la URL del WebP ya subido a MP4 o PNG
+async function convertMediaUrl(mediaUrl, targetFormat) {
     try {
         const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=${targetFormat}&key=${EVO_KEY}`
         const res = await fetch(convertUrl)
@@ -81,7 +81,7 @@ async function convertMedia(mediaUrl, targetFormat) {
     }
 }
 
-// 4. Resolutor de JID
+// Resolutor de JIDs reales
 async function resolveRealJid(rawId, altPn, conn) {
     if (!rawId && !altPn) return null
 
@@ -119,7 +119,7 @@ async function processAntiNSFW(m, conn, isOwner) {
     const q = m.quoted ? m.quoted : m
     const rawMessage = q.message || q.msg || q
 
-    // Verificación de propiedades de Baileys para Mime y Animación
+    // Identificación del tipo de sticker mediante la estructura de Baileys
     const stickerMsg = rawMessage?.stickerMessage || (q.mtype === 'stickerMessage' ? q : null)
     const mime = (
         rawMessage?.imageMessage?.mimetype ||
@@ -131,16 +131,13 @@ async function processAntiNSFW(m, conn, isOwner) {
         ''
     )
 
-    // Detecta si es un sticker animado usando Baileys protocol
     const isAnimatedSticker = Boolean(stickerMsg?.isAnimated)
     const isVideoOrGif = mime.startsWith('video/') || mime.includes('gif')
-    const isStaticSticker = mime.includes('webp') && !isAnimatedSticker
 
-    // Si no es un tipo de archivo multimedia soportado, ignora
     if (!mime || (!mime.startsWith('image/') && !mime.startsWith('video/') && !mime.includes('webp'))) return
 
     try {
-        // Descarga del buffer utilizando los métodos de Baileys
+        // PASO 1: Descargar el archivo WebP original desde WhatsApp
         let mediaBuffer
         try {
             mediaBuffer = await downloadMediaMessage(
@@ -161,47 +158,47 @@ async function processAntiNSFW(m, conn, isOwner) {
 
         if (!mediaBuffer) return
 
-        // Subir archivo WebP u original a la Nube
-        let mediaUrl = null
+        // PASO 2: Subir el Sticker tal cual (formato WebP original) a la nube
+        let uploadedWebpUrl = null
         const fileSize = mediaBuffer.length
 
         try {
-            mediaUrl = await uploadToEvo(mediaBuffer, mime, fileSize)
+            uploadedWebpUrl = await uploadToEvo(mediaBuffer, mime, fileSize)
         } catch {
             try {
-                mediaUrl = await uploadToStellar(mediaBuffer, mime, fileSize)
+                uploadedWebpUrl = await uploadToStellar(mediaBuffer, mime, fileSize)
             } catch {
                 return
             }
         }
 
-        if (!mediaUrl) return
+        if (!uploadedWebpUrl) return
 
-        // SEPARACIÓN DE CASOS:
-        // Case A: Sticker Animado / Video / GIF ➔ Convertir a MP4
+        // PASO 3: Conversión basada en tu propuesta
+        let finalMediaUrl = uploadedWebpUrl
+
         if (isAnimatedSticker || isVideoOrGif) {
-            mediaUrl = await convertMedia(mediaUrl, 'mp4')
-        } 
-        // Case B: Sticker Estático ➔ Convertir a PNG
-        else if (isStaticSticker || mime.startsWith('image/')) {
-            mediaUrl = await convertMedia(mediaUrl, 'png')
+            // Si es Sticker Animado ➔ Convertir URL WebP a MP4
+            finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'mp4')
+        } else if (mime.includes('webp')) {
+            // Si es Sticker Estático ➔ Convertir URL WebP a PNG
+            finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'png')
         }
 
-        // Consultar API de Detección AntiNSFW
-        const apiEvo = `https://api.evogb.org/nsfw/detect?method=url&url=${encodeURIComponent(mediaUrl)}&frames=5&model=model-v3&key=${EVO_KEY}`
+        // PASO 4: Enviar la URL convertida (MP4) a la API de análisis NSFW
+        const apiEvo = `https://api.evogb.org/nsfw/detect?method=url&url=${encodeURIComponent(finalMediaUrl)}&frames=5&model=model-v3&key=${EVO_KEY}`
         const res = await fetch(apiEvo)
         const json = await res.json()
 
         if (!json || !json.status || !json.analysis) return
 
-        // Si se detecta NSFW
+        // PASO 5: Sancionar si se detecta NSFW
         if (json.analysis.is_nsfw) {
             const senderRaw = m.sender || m.key.participant || m.participant
             const senderPn = m.key?.senderPn || m.key?.participantAlt
             const realJid = await resolveRealJid(senderRaw, senderPn, conn) || senderRaw
             const cleanNumber = realJid.split('@')[0].replace(/[^0-9]/g, '')
 
-            // Omitir Moderadores
             const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null)
             const participants = groupMetadata?.participants || []
             const isUserAdmin = participants.some(p => {
@@ -211,7 +208,7 @@ async function processAntiNSFW(m, conn, isOwner) {
 
             if (isUserAdmin || isOwner) return
 
-            // 1. Eliminar Mensaje con Sticker/Video prohibido
+            // Eliminar sticker prohibido
             try {
                 await conn.sendMessage(m.chat, {
                     delete: {
@@ -225,16 +222,15 @@ async function processAntiNSFW(m, conn, isOwner) {
                 await conn.sendMessage(m.chat, { delete: m.key }).catch(() => {})
             }
 
-            // 2. Notificar en el grupo
             const flag = json.analysis.flag || 'NSFW'
             const confidence = json.analysis.confidence || '100%'
 
             await conn.sendMessage(m.chat, {
-                text: `🔞 *@${cleanNumber}*, tu contenido en movimiento/sticker fue detectado como prohibido (*${flag}* - ${confidence}) y has sido eliminado del grupo.`,
+                text: `🔞 *@${cleanNumber}*, el sticker en movimiento enviado fue detectado como explícito (*${flag}* - ${confidence}) y has sido eliminado.`,
                 mentions: [realJid]
             }).catch(() => {})
 
-            // 3. Expulsar al remitente
+            // Expulsar al usuario
             try {
                 await conn.groupParticipantsUpdate(m.chat, [senderRaw], 'remove')
             } catch {
