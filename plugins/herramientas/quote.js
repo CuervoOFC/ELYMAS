@@ -8,11 +8,16 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/herramientas/quote.js
-ʚĭɞ ೃ funcion :: genera quote en sticker usando foto/nombre del objetivo o de quien manda el mensaje
+ʚĭɞ ೃ funcion :: genera quote y convierte localmente a sticker con metadatos oficiales
 ──────✧✦✧──────
 */
 
 import { downloadMediaMessage } from '@itsliaaa/baileys'
+import ffmpeg from 'fluent-ffmpeg'
+import fs from 'fs'
+import path from 'path'
+import config from '../../config.js'
+import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
 const EVO_KEY = 'evogb-WzR3kPpa'
 const STELLAR_KEY = 'api-COTah'
@@ -22,6 +27,39 @@ const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 
 const DEFAULT_PFP = 'https://i.imgur.com/2w3A80k.jpeg'
 const MAX_SIZE_MB = 45
+
+function convertToWebp(inputPath) {
+    return new Promise((resolve, reject) => {
+        const tmpDir = path.join(process.cwd(), 'tmp')
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
+        
+        const tmpOutput = path.join(tmpDir, `${Date.now()}_quote.webp`)
+
+        const options = [
+            '-vcodec', 'libwebp',
+            '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+            '-preset', 'default'
+        ]
+
+        ffmpeg(inputPath)
+            .outputOptions(options)
+            .toFormat('webp')
+            .save(tmpOutput)
+            .on('end', () => {
+                try {
+                    const resultBuffer = fs.readFileSync(tmpOutput)
+                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                    resolve(resultBuffer)
+                } catch (err) {
+                    reject(err)
+                }
+            })
+            .on('error', (err) => {
+                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                reject(err)
+            })
+    })
+}
 
 async function uploadMedia(mediaBuffer, mime) {
     const ext = mime.split('/')[1]?.split(';')[0] || 'jpg'
@@ -101,6 +139,12 @@ export default {
     command: ['qc', 'quote', 'cita'],
 
     async run(m, { conn, args }) {
+        const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
+        const botData = getSubbotConfig(rawJid, config)
+
+        const packname = botData.name || config.botName || 'Cuervo'
+        const author = botData.ownerName || config.ownerName || 'TheDevil'
+
         const q = m.quoted ? m.quoted : m
         const rawMessage = q.message || q.msg || q
 
@@ -124,6 +168,11 @@ export default {
         }
 
         const targetUser = await resolveUserTarget(m, conn)
+
+        const tmpDir = path.join(process.cwd(), 'tmp')
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
+
+        const tmpInput = path.join(tmpDir, `${Date.now()}_quote_in.png`)
 
         try {
             let avatarUrl = ''
@@ -176,11 +225,24 @@ export default {
             const arrayBuf = await res.arrayBuffer()
             const resultBuffer = Buffer.from(arrayBuf)
 
-            return await conn.sendMessage(m.chat, {
-                sticker: resultBuffer
-            }, { quoted: m })
+            fs.writeFileSync(tmpInput, resultBuffer)
+
+            const webpBuffer = await convertToWebp(tmpInput)
+
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
+
+            return await conn.sendMessage(
+                m.chat,
+                { 
+                    sticker: webpBuffer,
+                    packname: packname,
+                    author: author
+                },
+                { quoted: m }
+            )
 
         } catch (error) {
+            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
             console.error('❌ Error en Quote:', error)
             return m.reply(
                 '╭─「 ❌ *ERROR EN QUOTE* 」\n' +
