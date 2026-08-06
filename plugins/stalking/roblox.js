@@ -7,7 +7,7 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/herramientas/roblox.js
+ʚĭɞ ೃ codigo :: plugins/stalking/roblox.js
 ʚĭɞ r funcion :: stalkeo completo de Roblox con re-subida de avatar
 ──────✧✦✧──────
 */
