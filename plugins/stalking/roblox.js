@@ -49,7 +49,7 @@ export default {
                 '│\n' +
                 '│ ❌ Ingresa el usuario de Roblox a consultar.\n' +
                 '│\n' +
-                '│ 📌 *Ejemplo:* `.rbxstalk comepapitas33`\n' +
+                '│ 📌 *Ejemplo:* `.rbxstalk <nombre usuario>`\n' +
                 '╰──────────────'
             )
         }
