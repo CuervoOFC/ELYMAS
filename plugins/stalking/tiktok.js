@@ -35,7 +35,7 @@ export default {
                 '│\n' +
                 '│ ❌ Ingresa el usuario de TikTok a consultar.\n' +
                 '│\n' +
-                '│ 📌 *Ejemplo:* `.ttstalk cuervoofc404`\n' +
+                '│ 📌 *Ejemplo:* `.ttstalk <nombre usuario>`\n' +
                 '╰──────────────'
             )
         }
