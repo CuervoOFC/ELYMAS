@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/herramientas/quote.js
-ʚĭɞ ೃ funcion :: genera un quote basico usando la API EvoGB y sistema de upload
+ʚĭɞ ೃ funcion :: genera quote en sticker usando foto/nombre del objetivo o de quien manda el mensaje
 ──────✧✦✧──────
 */
 
@@ -61,33 +61,51 @@ async function uploadMedia(mediaBuffer, mime) {
     return json.file.publicUrl
 }
 
-function resolveUserTarget(m) {
+async function resolveUserTarget(m, conn) {
     let targetRaw = null
+    let targetPn = null
     let targetName = 'Usuario'
 
-    if (m.quoted) {
+    const contextInfo = m.message?.extendedTextMessage?.contextInfo || m.msg?.contextInfo
+    const mentionedJids = m.mentionedJid || contextInfo?.mentionedJid || []
+
+    if (mentionedJids.length > 0) {
+        targetRaw = mentionedJids[0]
+        targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
+        
+        const contact = conn.contacts?.[targetRaw]
+        targetName = contact?.name || contact?.notify || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
+    } else if (m.quoted) {
         targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
-        targetName = m.quoted.pushName || m.quoted.name || 'Usuario'
+        targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
+        targetName = m.quoted.pushName || m.quoted.name || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
     } else {
         targetRaw = m.sender || m.key.participant || m.participant
-        targetName = m.pushName || m.name || 'Usuario'
+        targetPn = m.key?.senderPn || m.key?.participantAlt
+        targetName = m.pushName || m.name || targetRaw.split('@')[0].replace(/[^0-9]/g, '') || 'Usuario'
     }
 
-    const str = String(targetRaw || '').split(':')[0]
+    let jid = targetRaw
+    if (targetPn) {
+        const cleanPn = String(targetPn).split('@')[0].replace(/[^0-9]/g, '')
+        if (cleanPn) jid = `${cleanPn}@s.whatsapp.net`
+    }
+
     return {
-        jid: str,
+        jid: jid,
         name: targetName
     }
 }
 
 export default {
-    command: ['quote', 'qc', 'cita'],
+    command: ['qc', 'quote', 'cita'],
 
     async run(m, { conn, args }) {
         const q = m.quoted ? m.quoted : m
         const rawMessage = q.message || q.msg || q
 
-        let quoteText = args.join(' ')
+        let quoteText = args.join(' ').replace(/@[0-9]+/g, '').trim()
+
         if (!quoteText && m.quoted) {
             quoteText = m.quoted.text || m.quoted.caption || ''
         }
@@ -96,14 +114,16 @@ export default {
             return m.reply(
                 '╭─「 💬 *GENERADOR DE QUOTE* 」\n' +
                 '│\n' +
-                '│ ❌ Escribe el texto para el quote o responde a un mensaje.\n' +
+                '│ ❌ Escribe el texto para el quote.\n' +
                 '│\n' +
-                '│ 📌 *Ejemplo:* `.quote Hola buenas`\n' +
+                '│ 📌 *Ejemplos:*\n' +
+                '│ • `.qc Hola a todos` (Tus datos)\n' +
+                '│ • `.qc @usuario Hola` (Datos de la otra persona)\n' +
                 '╰──────────────'
             )
         }
 
-        await m.reply('💬 Generando Quote...')
+        const targetUser = await resolveUserTarget(m, conn)
 
         try {
             let avatarUrl = ''
@@ -136,8 +156,6 @@ export default {
                 }
             }
 
-            const targetUser = resolveUserTarget(m)
-
             if (!avatarUrl) {
                 try {
                     avatarUrl = await conn.profilePictureUrl(targetUser.jid, 'image')
@@ -159,8 +177,7 @@ export default {
             const resultBuffer = Buffer.from(arrayBuf)
 
             return await conn.sendMessage(m.chat, {
-                image: resultBuffer,
-                caption: `💬 *Quote de:* ${targetUser.name}`
+                sticker: resultBuffer
             }, { quoted: m })
 
         } catch (error) {
@@ -168,7 +185,7 @@ export default {
             return m.reply(
                 '╭─「 ❌ *ERROR EN QUOTE* 」\n' +
                 '│\n' +
-                '│ Ocurrió un error al generar la imagen cita.\n' +
+                '│ Ocurrió un error al generar el sticker cita.\n' +
                 `│ 📄 ${error instanceof Error ? error.message : 'Error desconocido'}\n` +
                 '╰──────────────'
             )
