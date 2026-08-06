@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
 ʚĭɞ 💤 codigo :: plugins/grupos/antinsfw.js
-ʚĭɞ 💤 funcion :: AntiNSFW (Admins/Owners: solo borra mensaje | Usuarios: borra mensaje y expulsa)
+ʚĭɞ 💤 funcion :: AntiNSFW (Owners y Admins: solo elimina contenido | Usuarios: elimina contenido y expulsa)
 ──────✧✦✧──────
 */
 
@@ -24,7 +24,6 @@ const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 const MAX_SIZE_EVO = 150 * 1024 * 1024
 const MAX_SIZE_STELLAR = 40 * 1024 * 1024
 
-// Extraer número limpio sin dominio ni LID
 function extractPureNumber(target) {
     if (!target) return ''
     return String(target)
@@ -33,7 +32,6 @@ function extractPureNumber(target) {
         .replace(/[^0-9]/g, '')
 }
 
-// Subida a EvoGB
 async function uploadToEvo(mediaBuffer, mime, fileSize) {
     if (fileSize > MAX_SIZE_EVO) throw new Error('Excede límite EvoGB')
 
@@ -54,7 +52,6 @@ async function uploadToEvo(mediaBuffer, mime, fileSize) {
     return json.url
 }
 
-// Subida de respaldo a StellarWA
 async function uploadToStellar(mediaBuffer, mime, fileSize) {
     if (fileSize > MAX_SIZE_STELLAR) throw new Error('Excede límite StellarWA')
 
@@ -75,7 +72,6 @@ async function uploadToStellar(mediaBuffer, mime, fileSize) {
     return json.file.publicUrl
 }
 
-// Convertir archivo vía API
 async function convertMediaUrl(mediaUrl, targetFormat) {
     try {
         const convertUrl = `${EVO_CONVERTER_API}?method=url&url=${encodeURIComponent(mediaUrl)}&width=none&height=none&to=${targetFormat}&key=${EVO_KEY}`
@@ -91,7 +87,6 @@ async function convertMediaUrl(mediaUrl, targetFormat) {
     }
 }
 
-// Resolutor de LID a JID/Número real
 async function resolveRealJid(rawId, altPn, conn) {
     if (!rawId && !altPn) return null
 
@@ -129,7 +124,6 @@ async function processAntiNSFW(m, conn, isOwner) {
     const q = m.quoted ? m.quoted : m
     const rawMessage = q.message || q.msg || q
 
-    // Identificación de tipo de archivo mediante Baileys
     const stickerMsg = rawMessage?.stickerMessage || (q.mtype === 'stickerMessage' ? q : null)
     const mime = (
         rawMessage?.imageMessage?.mimetype ||
@@ -147,7 +141,6 @@ async function processAntiNSFW(m, conn, isOwner) {
     if (!mime || (!mime.startsWith('image/') && !mime.startsWith('video/') && !mime.includes('webp'))) return
 
     try {
-        // Descarga de Media
         let mediaBuffer
         try {
             mediaBuffer = await downloadMediaMessage(
@@ -168,7 +161,6 @@ async function processAntiNSFW(m, conn, isOwner) {
 
         if (!mediaBuffer) return
 
-        // Subir archivo WebP original a la Nube
         let uploadedWebpUrl = null
         const fileSize = mediaBuffer.length
 
@@ -184,7 +176,6 @@ async function processAntiNSFW(m, conn, isOwner) {
 
         if (!uploadedWebpUrl) return
 
-        // Conversión: MP4 si es animado, PNG si es estático
         let finalMediaUrl = uploadedWebpUrl
         if (isAnimatedSticker || isVideoOrGif) {
             finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'mp4')
@@ -192,26 +183,24 @@ async function processAntiNSFW(m, conn, isOwner) {
             finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'png')
         }
 
-        // Detección NSFW por API
         const apiEvo = `https://api.evogb.org/nsfw/detect?method=url&url=${encodeURIComponent(finalMediaUrl)}&frames=5&model=model-v3&key=${EVO_KEY}`
         const res = await fetch(apiEvo)
         const json = await res.json()
 
         if (!json || !json.status || !json.analysis) return
 
-        // Si es contenido implícito / prohibido
         if (json.analysis.is_nsfw) {
             const senderRaw = m.sender || m.key.participant || m.participant || ''
             const senderPn = m.key?.senderPn || m.key?.participantAlt
             const realJid = await resolveRealJid(senderRaw, senderPn, conn) || senderRaw
             const senderNum = extractPureNumber(realJid || senderRaw)
 
-            // Verificación 1: ¿Es Owner Global según config.js?
+            // 1. Verificación de Owner Global (config.js)
             const isMainOwner = Array.isArray(config?.owners) && config.owners.some(
                 owner => extractPureNumber(owner) === senderNum
             )
 
-            // Verificación 2: ¿Es Administrador del Grupo?
+            // 2. Verificación de Administrador del grupo
             const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null)
             const participants = groupMetadata?.participants || []
             const isUserAdmin = participants.some(p => {
@@ -223,7 +212,9 @@ async function processAntiNSFW(m, conn, isOwner) {
             const flag = json.analysis.flag || 'NSFW'
             const confidence = json.analysis.confidence || '100%'
 
-            // 1. ELIMINAR EL CONTENIDO PROHIBIDO (Aplica para TODOS)
+            // APLICACIÓN DE SANCIÓN PASO A PASO:
+            
+            // Paso A: Eliminar el mensaje prohibido a TODOS los usuarios (sin excepción)
             await conn.sendMessage(m.chat, {
                 delete: {
                     remoteJid: m.chat,
@@ -233,21 +224,20 @@ async function processAntiNSFW(m, conn, isOwner) {
                 }
             }).catch(() => conn.sendMessage(m.chat, { delete: m.key }))
 
-            // 2. ACCIÓN SEGÚN EL ROL DEL USUARIO
+            // Paso B: Evaluar si el remitente tiene permisos de Owner/Admin
             if (isPrivilegedUser) {
-                // Si es Owner o Admin ➔ Solo advertencia por mensaje eliminado
+                // SÓLO BORRA EL MENSAJE + Notificación de advertencia (SIN EXPULSIÓN)
                 await conn.sendMessage(m.chat, {
-                    text: `⚠️ *@${senderNum}*, tu contenido fue eliminado por ser detectado como no permitido (*${flag}* - ${confidence}). Al ser Administrador/Owner no has sido expulsado.`,
+                    text: `⚠️ *@${senderNum}*, tu contenido fue eliminado por contener material prohibido (*${flag}* - ${confidence}). Al ser Administrador/Owner tu usuario no fue expulsado.`,
                     mentions: [realJid]
                 }).catch(() => {})
             } else {
-                // Si es Usuario Normal ➔ Mensaje de sanción + Expulsión
+                // USUARIO NORMAL: BORRA MENSAJE + EXPULSA DEL GRUPO
                 await conn.sendMessage(m.chat, {
-                    text: `🔞 *@${senderNum}*, tu contenido fue detectado como prohibido (*${flag}* - ${confidence}) y has sido eliminado del grupo.`,
+                    text: `🔞 *@${senderNum}*, el contenido enviado fue detectado como prohibido (*${flag}* - ${confidence}) y has sido eliminado del grupo.`,
                     mentions: [realJid]
                 }).catch(() => {})
 
-                // Expulsa al usuario del grupo
                 await conn.groupParticipantsUpdate(m.chat, [realJid], 'remove').catch(async () => {
                     await conn.groupParticipantsUpdate(m.chat, [senderRaw], 'remove').catch(() => {})
                 })
@@ -268,7 +258,6 @@ export default {
         const senderJid = m?.sender || m?.key?.participant || ''
         const senderNum = extractPureNumber(senderJid)
 
-        // Verificación de Owner Global desde config.js
         const isMainOwner = Array.isArray(config?.owners) && config.owners.some(
             owner => extractPureNumber(owner) === senderNum
         )
