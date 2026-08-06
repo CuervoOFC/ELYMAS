@@ -7,7 +7,7 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/herramientas/shazam.js
+ʚĭɞ r codigo :: plugins/herramientas/shazam.js
 ʚĭɞ ೃ funcion :: identificar música vía EvoGB Shazam API con subida a EvoGB Files
 ──────✧✦✧──────
 */
@@ -27,9 +27,13 @@ export default {
         const botName = botData.name || config.botName || 'Cuervo'
 
         const q = m.quoted ? m.quoted : m
-        const mime = (q.msg || q).mimetype || ''
+        const mime = (q.msg || q).mimetype || q.mediaType || ''
+        const mtype = q.mtype || ''
 
-        if (!/audio|video/.test(mime)) {
+        // Detección corregida para soportar mtype y mimetype
+        const isMedia = /audio|video/.test(mime) || /audioMessage|videoMessage/.test(mtype)
+
+        if (!isMedia) {
             return m.reply(
                 '╭─「 🎵 *SHAZAM SYSTEM* 」\n' +
                 '│\n' +
@@ -43,14 +47,19 @@ export default {
         await m.reply('🎧 *Escuchando y analizando audio con Shazam...*')
 
         try {
+            // 1. Descargar el archivo de audio/video
             const mediaBuffer = await q.download()
             if (!mediaBuffer) {
                 return m.reply('❌ No se pudo descargar el archivo de audio/video.')
             }
-            const fileUrl = await uploadMediaToEvoGB(mediaBuffer, mime)
+
+            // 2. Subir el archivo al servidor de EvoGB Files
+            const fileUrl = await uploadMediaToEvoGB(mediaBuffer, mime || 'video/mp4')
             if (!fileUrl) {
                 return m.reply('❌ Error al subir el archivo multimedia a EvoGB.')
             }
+
+            // 3. Consultar la API de EvoGB Shazam
             const apiUrl = `https://api.evogb.org/tools/whatmusic-shazam?method=url&url=${encodeURIComponent(fileUrl)}&key=${EVO_KEY}`
             const res = await axios.get(apiUrl, { timeout: 20000 })
 
@@ -79,6 +88,7 @@ export default {
 
             const coverUrl = media?.cover_hd || media?.cover
 
+            // 4. Enviar imagen del Cover HD con la información
             if (coverUrl) {
                 await conn.sendMessage(m.chat, {
                     image: { url: coverUrl },
@@ -87,6 +97,8 @@ export default {
             } else {
                 await m.reply(captionText)
             }
+
+            // 5. Enviar el Preview Audio si está disponible
             if (media?.preview_audio) {
                 await conn.sendMessage(m.chat, {
                     audio: { url: media.preview_audio },
@@ -102,15 +114,16 @@ export default {
     }
 }
 
+// Función para subir el buffer a files.evogb.win
 async function uploadMediaToEvoGB(buffer, mime) {
     try {
         const { FormData } = await import('form-data')
         const form = new FormData()
-        const ext = mime.split('/')[1] || 'mp3'
+        const ext = mime.includes('video') ? 'mp4' : 'mp3'
         
         form.append('file', buffer, { 
             filename: `media_${Date.now()}.${ext}`, 
-            contentType: mime 
+            contentType: mime || 'audio/mpeg' 
         })
 
         const res = await axios.post('https://files.evogb.win/upload', form, {
