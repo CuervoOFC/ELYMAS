@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ 💤 CODIGO JAVASCRIPT ʚĭɞ 💤
 ʚĭɞ 💤 codigo :: plugins/grupos/antinsfw.js
-ʚĭɞ 💤 funcion :: AntiNSFW (Admins/Owners exentos completamente | Usuarios borra y expulsa)
+ʚĭɞ 💤 funcion :: AntiNSFW (Admins/Owners: borra mensaje | Usuarios: borra mensaje y expulsa)
 ──────✧✦✧──────
 */
 
@@ -24,12 +24,33 @@ const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 const MAX_SIZE_EVO = 150 * 1024 * 1024
 const MAX_SIZE_STELLAR = 40 * 1024 * 1024
 
+// Extraer número limpio sin dominio ni sufijos de dispositivos (LID)
 function extractPureNumber(target) {
     if (!target) return ''
+    if (Array.isArray(target)) target = target[0]
     return String(target)
         .split('@')[0]
         .split(':')[0]
         .replace(/[^0-9]/g, '')
+}
+
+// Comprobar si el usuario es Owner (vía config.js, global.owner o isOwner)
+function checkIsOwner(senderNum, isOwnerParam) {
+    if (isOwnerParam) return true
+
+    const configOwners = config?.owners || []
+    const isConfigOwner = Array.isArray(configOwners) && configOwners.some(owner => {
+        const num = Array.isArray(owner) ? owner[0] : owner
+        return extractPureNumber(num) === senderNum
+    })
+
+    const globalOwners = global.owner || []
+    const isGlobalOwner = Array.isArray(globalOwners) && globalOwners.some(owner => {
+        const num = Array.isArray(owner) ? owner[0] : owner
+        return extractPureNumber(num) === senderNum
+    })
+
+    return isConfigOwner || isGlobalOwner
 }
 
 async function uploadToEvo(mediaBuffer, mime, fileSize) {
@@ -115,34 +136,35 @@ async function resolveRealJid(rawId, altPn, conn) {
     return cleanNumber ? `${cleanNumber}@s.whatsapp.net` : null
 }
 
-async function processAntiNSFW(m, conn, isOwner) {
+async function processAntiNSFW(m, conn, isOwnerParam) {
     if (!m || !m.isGroup) return
 
     const groupData = getGroup(m.chat)
     if (!groupData || !groupData.antinsfw) return
 
-    // 1. VERIFICACIÓN PRIMARIA DE OWNER Y ADMINS
+    // OBTENER INFORMACIÓN Y PRIVILEGIOS DEL REMITENTE
     const senderRaw = m.sender || m.key.participant || m.participant || ''
     const senderPn = m.key?.senderPn || m.key?.participantAlt
     const realJid = await resolveRealJid(senderRaw, senderPn, conn) || senderRaw
     const senderNum = extractPureNumber(realJid || senderRaw)
 
-    // ¿Es Owner Global según config.js?
-    const isMainOwner = Array.isArray(config?.owners) && config.owners.some(
-        owner => extractPureNumber(owner) === senderNum
-    )
+    const isBotOwner = checkIsOwner(senderNum, isOwnerParam)
 
-    // ¿Es Admin del grupo?
-    const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null)
-    const participants = groupMetadata?.participants || []
-    const isUserAdmin = participants.some(p => {
-        const pNum = extractPureNumber(p.id || p.jid || '')
-        return pNum === senderNum && (p.admin === 'admin' || p.admin === 'superadmin')
-    })
+    let isGroupAdmin = false
+    try {
+        const groupMetadata = await conn.groupMetadata(m.chat)
+        const participants = groupMetadata?.participants || []
+        isGroupAdmin = participants.some(p => {
+            const pNum = extractPureNumber(p.id || p.jid || '')
+            return pNum === senderNum && (p.admin === 'admin' || p.admin === 'superadmin')
+        })
+    } catch (e) {
+        console.error('⚠️ Error consultando metadata del grupo:', e.message)
+    }
 
-    // Si es Owner o Admin, se omite por completo la verificación para no tocar su contenido ni expulsarlo
-    if (isMainOwner || isOwner || isUserAdmin) return
+    const isPrivilegedUser = isBotOwner || isGroupAdmin
 
+    // LECTURA DEL ADJUNTO
     const q = m.quoted ? m.quoted : m
     const rawMessage = q.message || q.msg || q
 
@@ -156,9 +178,6 @@ async function processAntiNSFW(m, conn, isOwner) {
         m.mimetype ||
         ''
     )
-
-    const isAnimatedSticker = Boolean(stickerMsg?.isAnimated)
-    const isVideoOrGif = mime.startsWith('video/') || mime.includes('gif')
 
     if (!mime || (!mime.startsWith('image/') && !mime.startsWith('video/') && !mime.includes('webp'))) return
 
@@ -183,26 +202,24 @@ async function processAntiNSFW(m, conn, isOwner) {
 
         if (!mediaBuffer) return
 
-        let uploadedWebpUrl = null
+        let uploadedUrl = null
         const fileSize = mediaBuffer.length
 
         try {
-            uploadedWebpUrl = await uploadToEvo(mediaBuffer, mime, fileSize)
+            uploadedUrl = await uploadToEvo(mediaBuffer, mime, fileSize)
         } catch {
             try {
-                uploadedWebpUrl = await uploadToStellar(mediaBuffer, mime, fileSize)
+                uploadedUrl = await uploadToStellar(mediaBuffer, mime, fileSize)
             } catch {
                 return
             }
         }
 
-        if (!uploadedWebpUrl) return
+        if (!uploadedUrl) return
 
-        let finalMediaUrl = uploadedWebpUrl
-        if (isAnimatedSticker || isVideoOrGif) {
-            finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'mp4')
-        } else if (mime.includes('webp')) {
-            finalMediaUrl = await convertMediaUrl(uploadedWebpUrl, 'png')
+        let finalMediaUrl = uploadedUrl
+        if (mime.includes('webp')) {
+            finalMediaUrl = await convertMediaUrl(uploadedUrl, 'png')
         }
 
         const apiEvo = `https://api.evogb.org/nsfw/detect?method=url&url=${encodeURIComponent(finalMediaUrl)}&frames=5&model=model-v3&key=${EVO_KEY}`
@@ -211,12 +228,11 @@ async function processAntiNSFW(m, conn, isOwner) {
 
         if (!json || !json.status || !json.analysis) return
 
-        // SANCIÓN EXCLUSIVA PARA USUARIOS NORMALES
         if (json.analysis.is_nsfw) {
             const flag = json.analysis.flag || 'NSFW'
             const confidence = json.analysis.confidence || '100%'
 
-            // 1. Eliminar mensaje del usuario
+            // PASO 1: ELIMINAR EL CONTENIDO NSFW (Aplica a todos por igual)
             await conn.sendMessage(m.chat, {
                 delete: {
                     remoteJid: m.chat,
@@ -226,16 +242,24 @@ async function processAntiNSFW(m, conn, isOwner) {
                 }
             }).catch(() => conn.sendMessage(m.chat, { delete: m.key }))
 
-            // 2. Avisar en el grupo
-            await conn.sendMessage(m.chat, {
-                text: `🔞 *@${senderNum}*, el sticker/media enviado fue detectado como prohibido (*${flag}* - ${confidence}) y has sido eliminado del grupo.`,
-                mentions: [realJid]
-            }).catch(() => {})
+            // PASO 2: DIFERENCIAR SANCIÓN SEGÚN EL ROL
+            if (isPrivilegedUser) {
+                // ADMIN / OWNER: Solo se le avisa que el contenido fue borrado (NO SE LE EXPULSA)
+                await conn.sendMessage(m.chat, {
+                    text: `⚠️ *@${senderNum}*, tu contenido fue eliminado por ser detectado como no permitido (*${flag}* - ${confidence}). Al ser Administrador/Owner no fuiste expulsado del grupo.`,
+                    mentions: [realJid]
+                }).catch(() => {})
+            } else {
+                // USUARIO NORMAL: Notificación de sanción + Expulsión
+                await conn.sendMessage(m.chat, {
+                    text: `🔞 *@${senderNum}*, tu contenido fue detectado como prohibido (*${flag}* - ${confidence}) y has sido eliminado del grupo.`,
+                    mentions: [realJid]
+                }).catch(() => {})
 
-            // 3. Expulsar al usuario normal
-            await conn.groupParticipantsUpdate(m.chat, [realJid], 'remove').catch(async () => {
-                await conn.groupParticipantsUpdate(m.chat, [senderRaw], 'remove').catch(() => {})
-            })
+                await conn.groupParticipantsUpdate(m.chat, [realJid], 'remove').catch(async () => {
+                    await conn.groupParticipantsUpdate(m.chat, [senderRaw], 'remove').catch(() => {})
+                })
+            }
         }
 
     } catch (err) {
@@ -252,15 +276,12 @@ export default {
         const senderJid = m?.sender || m?.key?.participant || ''
         const senderNum = extractPureNumber(senderJid)
 
-        const isMainOwner = Array.isArray(config?.owners) && config.owners.some(
-            owner => extractPureNumber(owner) === senderNum
-        )
+        const isBotOwner = checkIsOwner(senderNum, isOwner)
 
         let isAdmin = false
         try {
             const groupMetadata = await conn.groupMetadata(m.chat)
             const participants = groupMetadata?.participants || []
-            
             isAdmin = participants.some(p => {
                 const pNum = extractPureNumber(p.id || p.jid || '')
                 return pNum === senderNum && (p.admin === 'admin' || p.admin === 'superadmin')
@@ -269,7 +290,7 @@ export default {
             console.error('Error al obtener la metadata:', e)
         }
 
-        if (!isAdmin && !isOwner && !isMainOwner) {
+        if (!isAdmin && !isBotOwner) {
             return m.reply('❌ Este comando solo puede ser utilizado por los *Administradores* del grupo o el *Owner Global*.')
         }
 
