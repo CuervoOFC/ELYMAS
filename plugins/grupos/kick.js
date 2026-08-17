@@ -1,36 +1,105 @@
 /*
 •❅──────✧✦✧──────❅•
 Codigo Creado Por CUERVO-TEAM-SUPREME
-Para Elymas-Bot
+Para Elymas-Bot Este Codigo Es 
+Exclusivo Y Unico Para Este Bot Al 
+Clonar O Copiar Dejar Estos Creditos 
+De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
-ʚĭɞ codigo :: plugins/grupos/kick.js
-ʚĭɞ funcion :: Eliminar a un participante del grupo
+ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
+ʚĭɞ r codigo :: plugins/grupos/kick.js
+ʚĭɞ ೃ funcion :: elimina a un usuario resolviendo su JID/LID/PN
 ──────✧✦✧──────
 */
+
+async function resolveParticipant(rawId, altPn, conn) {
+    if (!rawId && !altPn) return { mentionId: '', tagText: '', phoneNumber: '' }
+
+    if (altPn) {
+        const cleanPn = String(altPn).split('@')[0].replace(/[^0-9]/g, '')
+        if (cleanPn) {
+            return {
+                mentionId: `${cleanPn}@s.whatsapp.net`,
+                tagText: cleanPn,
+                phoneNumber: `+${cleanPn}`
+            }
+        }
+    }
+
+    const str = String(rawId || '').split(':')[0]
+
+    if (conn && typeof conn.findUserId === 'function') {
+        try {
+            const cleanQuery = str.split('@')[0].replace(/[^0-9]/g, '')
+            if (cleanQuery && cleanQuery.length >= 8) {
+                const res = await conn.findUserId(cleanQuery)
+                if (res?.phoneNumber) {
+                    const pn = res.phoneNumber.split('@')[0].replace(/[^0-9]/g, '')
+                    return {
+                        mentionId: res.phoneNumber,
+                        tagText: pn,
+                        phoneNumber: `+${pn}`
+                    }
+                }
+            }
+        } catch (e) {
+        }
+    }
+    const cleanNumber = str.split('@')[0].replace(/[^0-9]/g, '') || 'Desconocido'
+    return {
+        mentionId: str.includes('@') ? str : `${cleanNumber}@s.whatsapp.net`,
+        tagText: cleanNumber,
+        phoneNumber: cleanNumber !== 'Desconocido' ? `+${cleanNumber}` : 'No disponible'
+    }
+}
 
 export default {
     command: ['kick', 'ban', 'eliminar', 'sacar'],
 
     async run(m, { conn, args }) {
         if (!m.isGroup) {
-            return m.reply('❌ Este comando solo se puede usar en grupos.')
+            return m.reply('⚠️ Este comando solo se puede usar en grupos.')
         }
 
-        // Obtener la JID del usuario por: respuesta a mensaje, mención (@) o número en texto
-        let targetJid = m.quoted?.sender 
-            || m.mentionedJid?.[0] 
-            || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null)
+        let targetRaw = null
+        let targetPn = null
 
-        if (!targetJid) {
-            return m.reply('⚠️ Debes responder al mensaje de alguien, mencionarlo (@) o escribir su número.')
+        const contextInfo = m.message?.extendedTextMessage?.contextInfo || m.msg?.contextInfo
+        const mentionedJids = m.mentionedJid || contextInfo?.mentionedJid || []
+
+        if (mentionedJids.length > 0) {
+            targetRaw = mentionedJids[0]
+            targetPn = contextInfo?.mentionedPn || contextInfo?.participantAlt
+        } else if (m.quoted) {
+            targetRaw = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
+            targetPn = m.quoted.senderPn || m.quoted.key?.participantAlt
+        } else if (args[0]) {
+            targetRaw = args[0]
+        }
+
+        const target = await resolveParticipant(targetRaw, targetPn, conn)
+
+        if (!target.mentionId) {
+            return m.reply('⚠️ Debes mencionar a `@usuario`, responder a su mensaje o escribir su número.')
         }
 
         try {
-            await conn.groupParticipantsUpdate(m.chat, [targetJid], 'remove')
-            return m.reply(`✅ Usuario @${targetJid.split('@')[0]} eliminado con éxito.`, null, {
-                mentions: [targetJid]
-            })
+            await conn.groupParticipantsUpdate(m.chat, [target.mentionId], 'remove')
+
+            const responseText = 
+                `╭─「 🚫 *USUARIO ELIMINADO* 」\n` +
+                `│\n` +
+                `│ 👤 *Usuario:* @${target.tagText}\n` +
+                `│ 📞 *Número:* ${target.phoneNumber}\n` +
+                `│ 📌 *Estado:* Eliminado del grupo con éxito.\n` +
+                `│\n` +
+                `╰──────────────`
+
+            await conn.sendMessage(m.chat, {
+                text: responseText,
+                mentions: [target.mentionId]
+            }, { quoted: m })
+
         } catch (error) {
             console.error('❌ Error en kick.js:', error)
             return m.reply('❌ No se pudo eliminar al usuario. Asegúrate de que **soy administrador** del grupo.')
