@@ -8,8 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: plugins/descargas/tiktok.js
-ʚĭɞ ೃ funcion :: descarga de tiktok
-ʚĭɞ ೃ estado :: completo
+ʚĭɞ ೃ funcion :: descarga de tiktok (soporta videos y fotos/carrusel)
 ──────✧✦✧──────
 */
 
@@ -65,7 +64,7 @@ export default {
         }
 
         await m.reply(
-            '📥 Descargando TikTok...\n\n' +
+            '📥 Descargando contenido de TikTok...\n\n' +
             `🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}`
         )
 
@@ -102,15 +101,7 @@ export default {
                 }
             }
 
-            const video =
-                data.data?.find(v => v.type === 'nowatermark_hd')?.url ||
-                data.data?.find(v => v.type === 'nowatermark')?.url ||
-                data.data?.find(v => v.type === 'watermark')?.url
-
-            if (!video) {
-                return m.reply('❌ No se encontró el video.')
-            }
-
+            const photos = data.data?.filter(v => v.type === 'photo') || []
             const music = data.music_info?.url || null
             const likes = data.stats?.likes || '0'
             const views = data.stats?.views || '0'
@@ -118,28 +109,67 @@ export default {
             const shares = data.stats?.share || '0'
             const duration = data.duration || 'Desconocida'
             const author = data.author?.nickname || 'Desconocido'
+            const title = data.title || 'Sin título'
 
-            await conn.sendMessage(
-                m.chat,
-                {
-                    video: { url: video },
-                    mimetype: 'video/mp4',
-                    fileName: 'tiktok.mp4',
-                    caption:
-                        '╭━━━〔 🎵 TIKTOK DOWNLOADER 〕━━━⬣\n' +
-                        `┃ 👤 Autor: ${author}\n` +
-                        `┃ ❤️ Likes: ${likes}\n` +
-                        `┃ 👀 Vistas: ${views}\n` +
-                        `┃ 💬 Comentarios: ${comments}\n` +
-                        `┃ 🔄 Compartidos: ${shares}\n` +
-                        `┃ ⏱️ Duración: ${duration}\n` +
-                        `┃ 🎧 Música: ${data.music_info?.title || 'Sin información'}\n` +
-                        `┃ 🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
-                        '╰━━━━━━━━━━━━━━━━━━━━⬣'
-                },
-                { quoted: m }
-            )
+            // --- CASO 1: SI ES UNA PUBLICACIÓN DE FOTOS (CARRUSEL) ---
+            if (photos.length > 0) {
+                await m.reply(`🖼️ Se encontraron *${photos.length} fotos*. Enviando imágenes...`)
 
+                for (let i = 0; i < photos.length; i++) {
+                    const photoUrl = photos[i].url
+                    
+                    await conn.sendMessage(
+                        m.chat,
+                        {
+                            image: { url: photoUrl },
+                            caption: i === 0 ? 
+                                '╭━━━〔 🖼️ TIKTOK FOTOS 〕━━━⬣\n' +
+                                `┃ 👤 Autor: ${author}\n` +
+                                `┃ 📝 Título: ${title}\n` +
+                                `┃ ❤️ Likes: ${likes}\n` +
+                                `┃ 👀 Vistas: ${views}\n` +
+                                `┃ 🖼️ Fotos: ${photos.length}\n` +
+                                `┃ 🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
+                                '╰━━━━━━━━━━━━━━━━━━━━⬣' : ''
+                        },
+                        { quoted: m }
+                    )
+                }
+
+            // --- CASO 2: SI ES UN VIDEO ---
+            } else {
+                const video =
+                    data.data?.find(v => v.type === 'nowatermark_hd')?.url ||
+                    data.data?.find(v => v.type === 'nowatermark')?.url ||
+                    data.data?.find(v => v.type === 'watermark')?.url
+
+                if (!video) {
+                    return m.reply('❌ No se encontró ni video ni imágenes en la publicación.')
+                }
+
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        video: { url: video },
+                        mimetype: 'video/mp4',
+                        fileName: 'tiktok.mp4',
+                        caption:
+                            '╭━━━〔 🎵 TIKTOK DOWNLOADER 〕━━━⬣\n' +
+                            `┃ 👤 Autor: ${author}\n` +
+                            `┃ ❤️ Likes: ${likes}\n` +
+                            `┃ 👀 Vistas: ${views}\n` +
+                            `┃ 💬 Comentarios: ${comments}\n` +
+                            `┃ 🔄 Compartidos: ${shares}\n` +
+                            `┃ ⏱️ Duración: ${duration}\n` +
+                            `┃ 🎧 Música: ${data.music_info?.title || 'Sin información'}\n` +
+                            `┃ 🌐 API: ${api === 1 ? 'EvoGB' : 'Stellar'}\n` +
+                            '╰━━━━━━━━━━━━━━━━━━━━⬣'
+                    },
+                    { quoted: m }
+                )
+            }
+
+            // --- ENVIAR AUDIO MP3 SI ESTÁ DISPONIBLE ---
             if (music) {
                 try {
                     await conn.sendMessage(
