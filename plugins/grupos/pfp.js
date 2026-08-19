@@ -67,7 +67,7 @@ async function resolveParticipant(rawId, altPn, conn, fallbackName) {
 }
 
 export default {
-    command: ['pfp', 'perfil', 'avatar', 'getpic'],
+    command: ['pfp', 'avatar', 'getpic'],
 
     async run(m, { conn }) {
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
