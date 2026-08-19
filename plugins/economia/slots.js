@@ -64,7 +64,7 @@ export default {
 
             return m.reply(
                 `${board}\n\n` +
-                `🎉 ¡FELICIDADES! Coincidencia encontrada.\n` +
+                `🎉 ¡FELICIDADES!\n` +
                 `💰 Monedas ganadas: *+${formatNumber(winAmount)}* 🪙\n` +
                 `👛 Nuevo Saldo: *${formatNumber(wallet + winAmount)}*`
             )
