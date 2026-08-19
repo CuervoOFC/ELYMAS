@@ -33,6 +33,7 @@
     "@itsliaaa/baileys": "latest",
     "@napi-rs/canvas": "latest",
     "node-cache": "*",
+    "node-fetch": "*",
     "wa-sticker-formatter": "*",
     "node-webpmux": "*",
     "fluent-ffmpeg": "*",
