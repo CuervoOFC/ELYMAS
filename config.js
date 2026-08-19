@@ -19,8 +19,12 @@ export const config = {
     ownerName: 'TheDevil',
 
     owners: [
+        // The Devil (numero off)
         '886958381686',
-        '250405971824657'
+        '250405971824657',
+        // The Devil (numero nuevo)
+        '818021404021',
+        '47344095637596'
     ],
 
     prefixes: [
