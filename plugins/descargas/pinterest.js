@@ -13,7 +13,7 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-const STELLAR_KEY = 'api-COTah'
+const STELLAR_KEY = 'CuervoOFC'
 const BASE_API = 'https://api.stellarwa.xyz/search'
 
 export default {
