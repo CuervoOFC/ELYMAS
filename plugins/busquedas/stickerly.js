@@ -8,10 +8,13 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
 ʚĭɞ codigo :: plugins/busquedas/stickerly.js
-ʚĭɞ funcion :: Búsqueda y descarga de paquetes de Sticker.ly con API de respaldo
+ʚĭɞ funcion :: Búsqueda y descarga de paquetes de Sticker.ly convertidos a WebP local
 ──────✧✦✧──────
 */
 
+import ffmpeg from 'fluent-ffmpeg'
+import fs from 'fs'
+import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
@@ -34,6 +37,37 @@ async function pedirDatos(url) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP Error status: ${res.status}`)
     return await res.json()
+}
+
+// Convertidor local idéntico a tu sticker.js
+function convertToWebp(inputPath) {
+    return new Promise((resolve, reject) => {
+        const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_${Math.random().toString(36).substring(7)}_out.webp`)
+
+        const options = [
+            '-vcodec', 'libwebp',
+            '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+            '-preset', 'default'
+        ]
+
+        ffmpeg(inputPath)
+            .outputOptions(options)
+            .toFormat('webp')
+            .save(tmpOutput)
+            .on('end', () => {
+                try {
+                    const resultBuffer = fs.readFileSync(tmpOutput)
+                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                    resolve(resultBuffer)
+                } catch (err) {
+                    reject(err)
+                }
+            })
+            .on('error', (err) => {
+                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
+                reject(err)
+            })
+    })
 }
 
 export default {
@@ -59,12 +93,12 @@ export default {
         const esUrl = esUrlValida(textoLimpio)
         const tipoConsulta = esUrl ? 'detail' : 'search'
 
-        await m.reply(esUrl ? '📥 *Obteniendo paquete de stickers...*' : '🔍 *Buscando paquetes en Sticker.ly...*')
+        await m.reply(esUrl ? '📥 *Descargando y procesando paquete de stickers...*' : '🔍 *Buscando paquetes en Sticker.ly...*')
 
         let rawJson = null
         let proveedor = ''
 
-        // 1. Intentar con Evogb API
+        // Petición API Principal Evogb
         try {
             const urlEvogb = `${API_EVOGB}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${EVOGB_KEY}`
             rawJson = await pedirDatos(urlEvogb)
@@ -72,12 +106,12 @@ export default {
             if (rawJson && (rawJson.status === true || rawJson.code === 200)) {
                 proveedor = 'Evogb'
             } else {
-                throw new Error('Respuesta inválida en Evogb')
+                throw new Error('Sin respuesta en Evogb')
             }
         } catch (eEvogb) {
             console.warn('⚠️ Falló API Evogb, activando respaldo Stellar...', eEvogb.message)
 
-            // 2. Intentar con Stellar API (Respaldo)
+            // Petición API Respaldo Stellar
             try {
                 const urlStellar = `${API_STELLAR}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${STELLAR_KEY}`
                 rawJson = await pedirDatos(urlStellar)
@@ -85,7 +119,7 @@ export default {
                 if (rawJson && (rawJson.status === true || rawJson.code === 200)) {
                     proveedor = 'Stellar'
                 } else {
-                    throw new Error('Respuesta inválida en Stellar')
+                    throw new Error('Sin respuesta en Stellar')
                 }
             } catch (eStellar) {
                 console.error('❌ Ambas APIs fallaron:', eStellar.message)
@@ -94,7 +128,7 @@ export default {
         }
 
         try {
-            // BUSQUEDA DE PAQUETES (Search)
+            // MODO BÚSQUEDA
             if (!esUrl) {
                 const listaBusqueda = rawJson.result || rawJson.resultados || rawJson.detalles || (Array.isArray(rawJson) ? rawJson : [])
 
@@ -122,7 +156,7 @@ export default {
                 return await m.reply(caption.trim())
             }
 
-            // DESCARGA DE DETALLES DEL PACK (Detail)
+            // MODO DETALLE / DESCARGA COMPLETA
             const detalles = rawJson.detalles || rawJson.result || rawJson
             const stickersList = detalles.stickers || rawJson.stickers || []
 
@@ -130,34 +164,52 @@ export default {
                 return m.reply('❌ No se pudieron extraer los stickers de esta URL.')
             }
 
-            // Extraer nombre del paquete y nombre del autor desde el JSON
             const packname = detalles.name || defaultPackname
             const author = detalles.author?.name || detalles.author || defaultAuthor
 
-            await m.reply(`✅ *Paquete encontrado:* "${packname}" (${stickersList.length} stickers).\nEnviando stickers...`)
+            await m.reply(`✅ *Paquete encontrado:* "${packname}"\n📦 *Total stickers:* ${stickersList.length}\n⏳ Convertiendo y enviando todos los stickers...`)
 
-            // Limitar a 10 stickers por envío para evitar lag/spam
-            const enviarMax = stickersList.slice(0, 10)
+            const tmpDir = path.join(process.cwd(), 'tmp')
+            if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
 
-            for (const item of enviarMax) {
-                // Extraer la URL de la imagen del objeto devuelto por la API ({ imageUrl: '...' })
-                const urlDirecta = typeof item === 'string' ? item : item.imageUrl || item.url || item.link
+            // Procesar TODOS los stickers del paquete
+            for (const item of stickersList) {
+                const urlDirecta = typeof item === 'string' ? item : (item.imageUrl || item.url || item.link)
 
                 if (!urlDirecta) continue
 
+                const tmpInput = path.join(tmpDir, `${Date.now()}_${Math.random().toString(36).substring(7)}.png`)
+
                 try {
+                    // Descargar la imagen
+                    const resImage = await fetch(urlDirecta)
+                    if (!resImage.ok) continue
+                    
+                    const arrayBuffer = await resImage.arrayBuffer()
+                    const imageBuffer = Buffer.from(arrayBuffer)
+                    
+                    fs.writeFileSync(tmpInput, imageBuffer)
+
+                    // Convertir a WebP localmente con FFmpeg
+                    const webpBuffer = await convertToWebp(tmpInput)
+
+                    if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
+
+                    // Enviar sticker convertido con Buffer
                     await conn.sendMessage(m.chat, {
-                        sticker: { url: urlDirecta },
+                        sticker: webpBuffer,
                         packname: packname,
                         author: author
                     }, { quoted: m })
+
                 } catch (errSticker) {
-                    console.error(`Error enviando sticker (${urlDirecta}):`, errSticker.message)
+                    if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
+                    console.error(`Error procesando sticker individual (${urlDirecta}):`, errSticker.message)
                 }
             }
 
         } catch (error) {
-            console.error('❌ Error procesando los stickers:', error)
+            console.error('❌ Error general procesando los stickers:', error)
             return m.reply('❌ Ocurrió un fallo al procesar los archivos del paquete.')
         }
     }
