@@ -15,7 +15,7 @@ De Cuervo-Team-Supreme
 
 
 const API =
-    'https://api.delirius.store/download/ytmp3'
+    'https://api.delirius.online/download/ytmp3'
 
 export default {
 
