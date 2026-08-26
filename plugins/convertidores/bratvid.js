@@ -19,10 +19,9 @@ import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const EVO_KEY = 'evogb-WzR3kPpa'
-const STELLAR_KEY = 'api-COTah'
+const EVO_KEY = 'CuervoOFC'
+const STELLAR_KEY = 'CuervoOFC'
 
-// Función para convertir tanto video/gif como imagenes estáticas a WebP
 function convertToWebp(inputPath, isVideo = false) {
     return new Promise((resolve, reject) => {
         const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
