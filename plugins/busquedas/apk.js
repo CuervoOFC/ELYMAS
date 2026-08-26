@@ -12,8 +12,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-const EVO_KEY = 'evogb-WzR3kPpa'
-const STELLAR_KEY = 'api-COTah'
+const EVO_KEY = 'CuervoOFC'
+const STELLAR_KEY = 'CuervoOFC'
 
 const API_EVO = 'https://api.evogb.org/search/apk'
 const API_STELLAR = 'https://api.stellarwa.xyz/search/apk'
