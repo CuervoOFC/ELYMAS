@@ -16,8 +16,8 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const KEY_EVOGB = 'evogb-WzR3kPpa'
-const KEY_STELLAR = 'api-COTah'
+const KEY_EVOGB = 'CuervoOFC'
+const KEY_STELLAR = 'CuervoOFC'
 
 export default {
     command: ['mediafire', 'mediafiredl', 'mf', 'mfdl'],
