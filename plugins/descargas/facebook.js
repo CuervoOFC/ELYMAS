@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
 ʚĭɞ codigo :: plugins/descargas/facebook.js
-ʚĭɞ funcion :: Descargar videos de Facebook y subir el archivo al host (Upload)
+ʚĭɞ funcion :: Descargar video de FB, subirlo al host y enviarlo como video a WhatsApp
 ──────✧✦✧──────
 */
 
@@ -97,7 +97,7 @@ export default {
             )
         }
 
-        await m.reply('⏳ *Obteniendo y subiendo video de Facebook... Por favor espera.*')
+        await m.reply('⏳ *Obteniendo, alojando y enviando video... Por favor espera.*')
 
         let videoUrl = null
 
@@ -162,18 +162,25 @@ export default {
                 fileData = await uploadToStellar(videoBuffer)
             }
 
-            // Responder con los datos del servidor de subida
-            return m.reply(
-                '╭━━━〔 ☁️ FACEBOOK 〕━━━⬣\n' +
-                `┃ 📄 *Nombre:* ${fileData.name}\n` +
-                `┃ 📦 *Tamaño:* ${fileData.size}\n` +
-                '╰━━━━━━━━━━━━━━━━━━━━⬣\n\n' +
-                `🔗 *Enlace:* ${fileData.url}`
+            // Enviar el archivo subido como VIDEO a WhatsApp con la información en el caption
+            return await conn.sendMessage(
+                m.chat,
+                {
+                    video: { url: fileData.url },
+                    caption: (
+                        '╭━━━〔 ☁️ FACEBOOK VIDEO 〕━━━⬣\n' +
+                        `┃ 📄 *Nombre:* ${fileData.name}\n` +
+                        `┃ 📦 *Tamaño:* ${fileData.size}\n` +
+                        `┃ 🔗 *Host Link:* ${fileData.url}\n` +
+                        '╰━━━━━━━━━━━━━━━━━━━━⬣'
+                    )
+                },
+                { quoted: m }
             )
 
         } catch (error) {
-            console.error('❌ Error al subir video de Facebook:', error)
-            return m.reply(`❌ Ocurrió un error al procesar y subir el video: ${error.message}`)
+            console.error('❌ Error al procesar/enviar el video:', error)
+            return m.reply(`❌ Ocurrió un error al enviar el video: ${error.message}`)
         }
     }
 }
