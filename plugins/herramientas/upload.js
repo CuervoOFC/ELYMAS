@@ -15,7 +15,7 @@ De Cuervo-Team-Supreme
 
 import { downloadMediaMessage } from '@itsliaaa/baileys'
 
-const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_KEY = 'CuervoOFC'
 const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
 
