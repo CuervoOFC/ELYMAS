@@ -16,8 +16,8 @@ import fs from 'fs'
 import path from 'path'
 import { getGroup } from '../../lib/database.js'
 
-const STELLAR_KEY = 'api-COTah'
-const EVO_KEY = 'evogb-WzR3kPpa'
+const STELLAR_KEY = 'CuervoOFC'
+const EVO_KEY = 'CuervoOFC'
 
 const API_COSPLAY = 'https://api.stellarwa.xyz/search/cosplaytele'
 const API_CONVERTER = 'https://api.evogb.org/api/converter-img'
