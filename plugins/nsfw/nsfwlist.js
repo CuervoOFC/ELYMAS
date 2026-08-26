@@ -17,7 +17,7 @@ import { getSubbotConfig } from '../../lib/subbotconfig.js'
 import { getGroup } from '../../lib/database.js'
 import axios from 'axios'
 
-const API_KEY = 'evogb-WzR3kPpa'
+const API_KEY = 'CuervoOFC'
 const API_BASE_URL = 'https://api.evogb.org/nsfw/interaction'
 
 async function resolveParticipant(rawId, altPn, conn) {
