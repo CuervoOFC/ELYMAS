@@ -15,8 +15,8 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const EVOGB_KEY = 'evogb-WzR3kPpa'
-const STELLAR_KEY = 'api-COTah'
+const EVO_KEY = 'CuervoOFC'
+const STELLAR_KEY = 'CuervoOFC'
 
 const API_EVOGB = 'https://api.evogb.org/stickerly'
 const API_STELLAR = 'https://api.stellarwa.xyz/stickerly'
