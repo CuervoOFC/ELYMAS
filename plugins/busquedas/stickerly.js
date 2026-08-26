@@ -8,13 +8,10 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
 ʚĭɞ codigo :: plugins/busquedas/stickerly.js
-ʚĭɞ funcion :: Búsqueda y descarga de paquetes de Sticker.ly convertidos a WebP local
+ʚĭɞ funcion :: Descarga de Sticker.ly enviando el paquete completo (Sticker Pack Natively)
 ──────✧✦✧──────
 */
 
-import ffmpeg from 'fluent-ffmpeg'
-import fs from 'fs'
-import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
@@ -37,37 +34,6 @@ async function pedirDatos(url) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP Error status: ${res.status}`)
     return await res.json()
-}
-
-// Convertidor local idéntico a tu sticker.js
-function convertToWebp(inputPath) {
-    return new Promise((resolve, reject) => {
-        const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_${Math.random().toString(36).substring(7)}_out.webp`)
-
-        const options = [
-            '-vcodec', 'libwebp',
-            '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-            '-preset', 'default'
-        ]
-
-        ffmpeg(inputPath)
-            .outputOptions(options)
-            .toFormat('webp')
-            .save(tmpOutput)
-            .on('end', () => {
-                try {
-                    const resultBuffer = fs.readFileSync(tmpOutput)
-                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
-                    resolve(resultBuffer)
-                } catch (err) {
-                    reject(err)
-                }
-            })
-            .on('error', (err) => {
-                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
-                reject(err)
-            })
-    })
 }
 
 export default {
@@ -93,12 +59,12 @@ export default {
         const esUrl = esUrlValida(textoLimpio)
         const tipoConsulta = esUrl ? 'detail' : 'search'
 
-        await m.reply(esUrl ? '📥 *Descargando y procesando paquete de stickers...*' : '🔍 *Buscando paquetes en Sticker.ly...*')
+        await m.reply(esUrl ? '📥 *Obteniendo paquete de stickers...*' : '🔍 *Buscando paquetes en Sticker.ly...*')
 
         let rawJson = null
         let proveedor = ''
 
-        // Petición API Principal Evogb
+        // 1. Petición API Principal Evogb
         try {
             const urlEvogb = `${API_EVOGB}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${EVOGB_KEY}`
             rawJson = await pedirDatos(urlEvogb)
@@ -111,7 +77,7 @@ export default {
         } catch (eEvogb) {
             console.warn('⚠️ Falló API Evogb, activando respaldo Stellar...', eEvogb.message)
 
-            // Petición API Respaldo Stellar
+            // 2. Petición API Respaldo Stellar
             try {
                 const urlStellar = `${API_STELLAR}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${STELLAR_KEY}`
                 rawJson = await pedirDatos(urlStellar)
@@ -156,7 +122,7 @@ export default {
                 return await m.reply(caption.trim())
             }
 
-            // MODO DETALLE / DESCARGA COMPLETA
+            // MODO DESCARGA Y ENVÍO DE STICKER PACK NATIVO
             const detalles = rawJson.detalles || rawJson.result || rawJson
             const stickersList = detalles.stickers || rawJson.stickers || []
 
@@ -167,50 +133,35 @@ export default {
             const packname = detalles.name || defaultPackname
             const author = detalles.author?.name || detalles.author || defaultAuthor
 
-            await m.reply(`✅ *Paquete encontrado:* "${packname}"\n📦 *Total stickers:* ${stickersList.length}\n⏳ Convertiendo y enviando todos los stickers...`)
-
-            const tmpDir = path.join(process.cwd(), 'tmp')
-            if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
-
-            // Procesar TODOS los stickers del paquete
-            for (const item of stickersList) {
-                const urlDirecta = typeof item === 'string' ? item : (item.imageUrl || item.url || item.link)
-
-                if (!urlDirecta) continue
-
-                const tmpInput = path.join(tmpDir, `${Date.now()}_${Math.random().toString(36).substring(7)}.png`)
-
-                try {
-                    // Descargar la imagen
-                    const resImage = await fetch(urlDirecta)
-                    if (!resImage.ok) continue
-                    
-                    const arrayBuffer = await resImage.arrayBuffer()
-                    const imageBuffer = Buffer.from(arrayBuffer)
-                    
-                    fs.writeFileSync(tmpInput, imageBuffer)
-
-                    // Convertir a WebP localmente con FFmpeg
-                    const webpBuffer = await convertToWebp(tmpInput)
-
-                    if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
-
-                    // Enviar sticker convertido con Buffer
-                    await conn.sendMessage(m.chat, {
-                        sticker: webpBuffer,
-                        packname: packname,
-                        author: author
-                    }, { quoted: m })
-
-                } catch (errSticker) {
-                    if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
-                    console.error(`Error procesando sticker individual (${urlDirecta}):`, errSticker.message)
+            // Mapear el array de stickers según la estructura requerida por @itsliaaa/baileys
+            const stickersArray = stickersList.map(item => {
+                const link = typeof item === 'string' ? item : (item.imageUrl || item.url || item.link)
+                return {
+                    data: { url: link }
                 }
+            }).filter(s => s.data.url)
+
+            if (stickersArray.length === 0) {
+                return m.reply('❌ No se encontraron URLs válidas de stickers.')
             }
 
+            // Seleccionar la primera imagen como portada (cover)
+            const coverUrl = stickersArray[0].data.url
+
+            await m.reply(`📦 *Enviando Paquete de Stickers:* "${packname}" (${stickersArray.length} stickers)...`)
+
+            // Enviar mensaje como Sticker Pack Oficial
+            return await conn.sendMessage(m.chat, {
+                cover: { url: coverUrl },
+                stickers: stickersArray,
+                name: packname,
+                publisher: author,
+                description: 'Descargado vía Sticker.ly'
+            }, { quoted: m })
+
         } catch (error) {
-            console.error('❌ Error general procesando los stickers:', error)
-            return m.reply('❌ Ocurrió un fallo al procesar los archivos del paquete.')
+            console.error('❌ Error enviando el paquete de stickers:', error)
+            return m.reply('❌ Ocurrió un fallo al procesar y enviar el paquete de stickers.')
         }
     }
 }
