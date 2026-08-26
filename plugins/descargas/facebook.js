@@ -12,8 +12,8 @@ De Cuervo-Team-Supreme
 ──────✧✦✧──────
 */
 
-const STELLAR_KEY = 'api-COTah'
-const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_KEY = 'CuervoOFC'
+const STELLAR_KEY = 'CuervoOFC'
 
 export default {
     command: ['fb', 'facebook', 'fbdl'],
