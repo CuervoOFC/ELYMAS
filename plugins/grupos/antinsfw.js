@@ -16,7 +16,7 @@ import { downloadMediaMessage } from '@itsliaaa/baileys'
 import { getGroup, getGroups, saveGroups } from '../../lib/database.js'
 import config from '../../config.js'
 
-const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_KEY = 'CuervoOFC'
 const EVO_UPLOAD_API = 'https://api.evogb.org/tools/upload'
 const EVO_CONVERTER_API = 'https://api.evogb.org/api/converter-img'
 const STELLAR_UPLOAD_API = 'https://nube.stellarwa.xyz/upload'
