@@ -16,7 +16,7 @@ import axios from 'axios'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_KEY = 'CuervoOFC'
 
 export default {
     command: ['hostinfo', 'host', 'domaininfo'],
