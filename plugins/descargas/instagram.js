@@ -16,7 +16,7 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const API_KEY = 'evogb-WzR3kPpa'
+const API_KEY = 'CuervoOFC'
 
 export default {
     command: ['instagram', 'ig', 'igdl', 'instagramdl'],
