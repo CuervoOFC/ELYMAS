@@ -15,11 +15,12 @@ De Cuervo-Team-Supreme
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const EVO_KEY = 'CuervoOFC'
+const EVOGB_KEY = 'CuervoOFC'
 const STELLAR_KEY = 'CuervoOFC'
 
 const API_EVOGB = 'https://api.evogb.org/stickerly'
 const API_STELLAR = 'https://api.stellarwa.xyz/stickerly'
+
 function esUrlValida(texto) {
     try {
         const url = new URL(texto)
@@ -79,7 +80,7 @@ export default {
                 const urlStellar = `${API_STELLAR}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(text)}&key=${STELLAR_KEY}`
                 const jsonStellar = await pedirDatos(urlStellar)
 
-                if (jsonStellar && jsonStellar.status !== false && (jsonStellar.result || jsonStellar.resultados || jsonStellar.stickers)) {
+                if (jsonStellar && jsonStellar.status !== false && (jsonStellar.result || jsonStellar.resultados || jsonStellar)) {
                     data = jsonStellar.result || jsonStellar.resultados || jsonStellar
                     proveedor = 'Stellar'
                 } else {
@@ -90,11 +91,12 @@ export default {
                 return m.reply('❌ Ocurrió un error o no se encontraron resultados en ninguna de las fuentes.')
             }
         }
+
         try {
             if (!esUrl && Array.isArray(data)) {
                 if (data.length === 0) return m.reply(`❌ No se encontraron paquetes para: *${text}*`)
 
-                const lista = data.slice(0, 5) // Muestra los primeros 5 paquetes
+                const lista = data.slice(0, 5)
                 let caption = `╭━━━〔 📦 *STICKER.LY SEARCH* 〕━━━⬣\n`
                 caption += `┃ 🔎 *Búsqueda:* ${text}\n`
                 caption += `┃ 🌐 *Fuente:* ${proveedor}\n`
@@ -123,11 +125,15 @@ export default {
             for (const stickerUrl of enviarMax) {
                 const urlDirecta = typeof stickerUrl === 'string' ? stickerUrl : stickerUrl.url
 
-                await conn.sendMessage(m.chat, {
-                    sticker: { url: urlDirecta },
-                    packname: packname,
-                    author: author
-                }, { quoted: m })
+                try {
+                    await conn.sendMessage(m.chat, {
+                        sticker: { url: urlDirecta },
+                        packname: packname,
+                        author: author
+                    }, { quoted: m })
+                } catch (errSticker) {
+                    console.error(`Error enviando sticker individual (${urlDirecta}):`, errSticker.message)
+                }
             }
 
         } catch (error) {
