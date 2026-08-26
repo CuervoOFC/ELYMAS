@@ -16,7 +16,7 @@ import axios from 'axios'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-const EVO_KEY = 'evogb-WzR3kPpa'
+const EVO_KEY = 'CuervoOFC'
 const DEFAULT_AVATAR = 'https://i.imgur.com/2w3A80k.jpeg'
 
 async function uploadAvatarUrl(url) {
