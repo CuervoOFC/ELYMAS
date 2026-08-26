@@ -6,167 +6,149 @@ Exclusivo Y Unico Para Este Bot Al
 Clonar O Copiar Dejar Estos Creditos 
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
-ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ ೃ codigo :: plugins/convertidores/sticker.js
-ʚĭɞ ೃ funcion :: creacion local de stickers con metadatos oficiales de Baileys
-ʚĭɞ ೃ estado :: completo
+ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
+ʚĭɞ codigo :: plugins/busquedas/stickerly.js
+ʚĭɞ funcion :: Búsqueda y descarga de paquetes de Sticker.ly con API de respaldo
 ──────✧✦✧──────
 */
 
-import { downloadContentFromMessage } from '@itsliaaa/baileys'
-import ffmpeg from 'fluent-ffmpeg'
-import fs from 'fs'
-import path from 'path'
 import config from '../../config.js'
 import { getSubbotConfig } from '../../lib/subbotconfig.js'
 
-async function streamToBuffer(stream) {
-    let buffer = Buffer.alloc(0)
-    for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk])
+const EVOGB_KEY = 'CuervoOFC'
+const STELLAR_KEY = 'CuervoOFC'
+
+const API_EVOGB = 'https://api.evogb.org/stickerly'
+const API_STELLAR = 'https://api.stellarwa.xyz/stickerly'
+
+function esUrlValida(texto) {
+    try {
+        const url = new URL(texto)
+        return url.protocol === 'http:' || url.protocol === 'https:'
+    } catch {
+        return false
     }
-    return buffer
 }
 
-function convertToWebp(inputPath, isVideo) {
-    return new Promise((resolve, reject) => {
-        const tmpOutput = path.join(process.cwd(), 'tmp', `${Date.now()}_out.webp`)
-        
-        const options = isVideo
-            ? [
-                '-vcodec', 'libwebp',
-                '-vf', 'scale=320:320:force_original_aspect_ratio=decrease,fps=10,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-                '-loop', '0',
-                '-ss', '00:00:00',
-                '-t', '00:00:06',
-                '-preset', 'default',
-                '-an',
-                '-vsync', '0'
-            ]
-            : [
-                '-vcodec', 'libwebp',
-                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-                '-preset', 'default'
-            ]
-
-        ffmpeg(inputPath)
-            .outputOptions(options)
-            .toFormat('webp')
-            .save(tmpOutput)
-            .on('end', () => {
-                try {
-                    const resultBuffer = fs.readFileSync(tmpOutput)
-                    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
-                    resolve(resultBuffer)
-                } catch (err) {
-                    reject(err)
-                }
-            })
-            .on('error', (err) => {
-                if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput)
-                reject(err)
-            })
-    })
+async function pedirDatos(url) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP Error status: ${res.status}`)
+    return await res.json()
 }
 
 export default {
-    command: ['sticker', 's', 'stiker'],
+    command: ['stickerly', 'stikerly', 'stpack'],
 
-    async run(m, { conn, args }) {
+    async run(m, { conn, text, usedPrefix, command }) {
+        if (!text) {
+            return m.reply(
+                `📦 *Ingresa un término de búsqueda o un enlace de Sticker.ly.*\n\n` +
+                `📌 *Ejemplos:*\n` +
+                `• \`${usedPrefix + command} Cuervo\` (Buscar paquetes)\n` +
+                `• \`${usedPrefix + command} https://sticker.ly/s/M40ZVI\` (Descargar pack)`
+            )
+        }
+
         const rawJid = conn?.user?.jid || conn?.user?.id || conn?.subBotJid || ''
         const botData = getSubbotConfig(rawJid, config)
 
         const defaultPackname = botData.name || config.botName || 'Cuervo'
         const defaultAuthor = botData.ownerName || config.ownerName || 'TheDevil'
 
-        const q = m.quoted ? m.quoted : m
-        const rawMessage = q.message || q.msg || q
+        const textoLimpio = text.trim()
+        const esUrl = esUrlValida(textoLimpio)
+        const tipoConsulta = esUrl ? 'detail' : 'search'
 
-        const type = Object.keys(rawMessage).find(
-            key => key === 'imageMessage' || key === 'videoMessage' || key === 'stickerMessage'
-        )
+        await m.reply(esUrl ? '📥 *Obteniendo paquete de stickers...*' : '🔍 *Buscando paquetes en Sticker.ly...*')
 
-        const mediaContent = rawMessage[type] || q
-
-        if (!type && !q.mimetype) {
-            return m.reply(
-                '╭─「 🖼️ *STICKER MAKER* 」\n' +
-                '│\n' +
-                '│ ❌ Responde a una *imagen* o *video* con el comando.\n' +
-                '│\n' +
-                '│ 📌 *Ejemplos:*\n' +
-                '│ • Responde a una imagen con `.s`\n' +
-                '│ • Responde a una imagen con `.s Pack | Autor`\n' +
-                '╰──────────────'
-            )
-        }
-
-        const mime = mediaContent.mimetype || q.mimetype || ''
-
-        if (mediaContent.seconds > 11) {
-            return m.reply('❌ El video no puede durar más de 10 segundos.')
-        }
-
-        await m.reply('⏳ *Procesando sticker...*')
-
-        const tmpDir = path.join(process.cwd(), 'tmp')
-        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
-
-        const ext = mime.split('/')[1]?.split(';')[0] || 'tmp'
-        const tmpInput = path.join(tmpDir, `${Date.now()}_in.${ext}`)
+        let data = null
+        let proveedor = ''
 
         try {
-            let mediaBuffer
+            const urlEvogb = `${API_EVOGB}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${EVOGB_KEY}`
+            const json = await pedirDatos(urlEvogb)
+
+            if (json && (json.status !== false || json.code === 200)) {
+                data = json.detalles || json.result || json.resultados || json
+                proveedor = 'Evogb'
+            } else {
+                throw new Error('Sin resultados en Evogb')
+            }
+        } catch (eEvogb) {
+            console.warn('⚠️ Falló API Evogb, activando respaldo Stellar...', eEvogb.message)
+
             try {
-                const streamType = mime.split('/')[0]
-                const stream = await downloadContentFromMessage(mediaContent, streamType)
-                mediaBuffer = await streamToBuffer(stream)
-            } catch (e) {
-                if (typeof q.download === 'function') {
-                    mediaBuffer = await q.download()
+                const urlStellar = `${API_STELLAR}/${tipoConsulta}?${esUrl ? 'url' : 'query'}=${encodeURIComponent(textoLimpio)}&key=${STELLAR_KEY}`
+                const jsonStellar = await pedirDatos(urlStellar)
+
+                if (jsonStellar && (jsonStellar.status !== false || jsonStellar.code === 200)) {
+                    data = jsonStellar.detalles || jsonStellar.result || jsonStellar.resultados || jsonStellar
+                    proveedor = 'Stellar'
+                } else {
+                    throw new Error('Sin resultados en Stellar')
+                }
+            } catch (eStellar) {
+                console.error('❌ Ambas APIs fallaron:', eStellar.message)
+                return m.reply('❌ Ocurrió un error o no se encontraron resultados en ninguna de las fuentes.')
+            }
+        }
+
+        try {
+            // Caso de Búsqueda (Search)
+            if (!esUrl && Array.isArray(data)) {
+                if (data.length === 0) return m.reply(`❌ No se encontraron paquetes para: *${text}*`)
+
+                const lista = data.slice(0, 5)
+                let caption = `╭━━━〔 📦 *STICKER.LY SEARCH* 〕━━━⬣\n`
+                caption += `┃ 🔎 *Búsqueda:* ${text}\n`
+                caption += `┃ 🌐 *Fuente:* ${proveedor}\n`
+                caption += `╰━━━━━━━━━━━━━━━━━━━━⬣\n\n`
+
+                lista.forEach((item, index) => {
+                    caption += `*${index + 1}. ${item.title || item.name || 'Sin título'}*\n`
+                    caption += `👤 *Autor:* ${item.author?.name || item.author || 'Desconocido'}\n`
+                    caption += `🔗 *Link:* ${item.url || item.link}\n\n`
+                })
+
+                caption += `📌 *Para descargar un pack usa:* \`${usedPrefix + command} <URL>\``
+                return await m.reply(caption.trim())
+            }
+
+            // Caso de Detalle / Descarga de Pack (Detail)
+            const stickersList = data.stickers || data.stickerUrls || (Array.isArray(data) ? data : [])
+
+            if (!stickersList || stickersList.length === 0) {
+                return m.reply('❌ No se pudieron extraer los stickers de esta URL.')
+            }
+
+            // Extraer nombre del pack y autor si la API los provee
+            const packname = data.name || defaultPackname
+            const author = data.author?.name || defaultAuthor
+
+            await m.reply(`✅ *Paquete encontrado:* "${packname}" (${stickersList.length} stickers).\nEnviando los primeros 10...`)
+
+            const enviarMax = stickersList.slice(0, 10)
+
+            for (const item of enviarMax) {
+                // Mapeo adaptado a la propiedad imageUrl enviada por tu API
+                const urlDirecta = typeof item === 'string' ? item : (item.imageUrl || item.url || item.link)
+
+                if (!urlDirecta) continue
+
+                try {
+                    await conn.sendMessage(m.chat, {
+                        sticker: { url: urlDirecta },
+                        packname: packname,
+                        author: author
+                    }, { quoted: m })
+                } catch (errSticker) {
+                    console.error(`Error enviando sticker individual (${urlDirecta}):`, errSticker.message)
                 }
             }
 
-            if (!mediaBuffer || mediaBuffer.length === 0) {
-                throw new Error('No se pudo extraer el archivo multimedia.')
-            }
-
-            fs.writeFileSync(tmpInput, mediaBuffer)
-
-            const isVideo = mime.startsWith('video')
-            const webpBuffer = await convertToWebp(tmpInput, isVideo)
-
-            const text = args.join(' ')
-            let packname = defaultPackname
-            let author = defaultAuthor
-
-            if (text.includes('|')) {
-                const [p, a] = text.split('|')
-                if (p && p.trim()) packname = p.trim()
-                if (a && a.trim()) author = a.trim()
-            } else if (text.trim()) {
-                packname = text.trim()
-            }
-
-            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
-
-            return await conn.sendMessage(
-                m.chat,
-                { 
-                    sticker: webpBuffer,
-                    packname: packname,
-                    author: author
-                },
-                { quoted: m }
-            )
-
         } catch (error) {
-            if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput)
-            console.error('❌ Error en sticker.js:', error)
-            return m.reply(
-                '❌ Hubo un error al convertir el archivo a sticker.\n\n' +
-                `📄 Detalle: ${error.message || error}`
-            )
+            console.error('❌ Error enviando stickers:', error)
+            return m.reply('❌ Ocurrió un fallo al procesar los archivos del paquete.')
         }
     }
 }
