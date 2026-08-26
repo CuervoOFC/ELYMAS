@@ -14,7 +14,7 @@ De Cuervo-Team-Supreme
 
 import fetch from 'node-fetch'
 
-const API_KEY = 'evogb-WzR3kPpa'
+const API_KEY = 'CuervoOFC'
 
 async function uploadToEvogb(targetUrl) {
     try {
