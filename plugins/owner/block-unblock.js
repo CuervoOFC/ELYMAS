@@ -2,9 +2,10 @@
 •❅──────✧✦✧──────❅•
 Codigo Creado Por CUERVO-TEAM-SUPREME
 Para Elymas-Bot
-ʚĭɞ CODIGO JAVASCRIPT ʚĭɞ
-ʚĭɞ codigo :: plugins/owner/blockuser.js
-ʚĭɞ funcion :: Bloquear / Desbloquear el uso de comandos a un usuario
+━━━━━ ☾☽ ━━━━━
+ʚĭɞ ⏰ CODIGO JAVASCRIPT ʚĭɞ ⏰
+ʚĭɞ ⏰ codigo :: plugins/owner/blockuser.js
+ʚĭɞ ⏰ funcion :: Bloquear / Desbloquear el uso de comandos a un usuario
 ──────✧✦✧──────
 */
 
@@ -23,6 +24,7 @@ export default {
         const senderJid = m?.sender || m?.key?.participant || m?.key?.remoteJid || ''
         const senderNum = extractPureNumber(senderJid)
 
+        // Verificación de Owner Global
         const isMainOwner =
             Array.isArray(config?.owners) &&
             config.owners.some(owner => extractPureNumber(owner) === senderNum)
@@ -31,29 +33,67 @@ export default {
             return m.reply('🚫 Este comando solo puede ser usado por el *Owner Global*.')
         }
 
-        const targetJid = m.quoted ? m.quoted.sender : (m.mentionedJid?.[0] || null)
+        // Extraer contextInfo por si m.mentionedJid no fue normalizado en el handler
+        const msg = m.message || {}
+        const contextInfo = 
+            msg.extendedTextMessage?.contextInfo ||
+            msg.imageMessage?.contextInfo ||
+            msg.videoMessage?.contextInfo ||
+            m.msg?.contextInfo || {}
 
-        if (!targetJid) {
-            return m.reply('⚠️ Debes etiquetar a un usuario o responder a su mensaje.\nEjemplo: `.bancmd @usuario`')
+        const mentions = m.mentionedJid || contextInfo.mentionedJid || []
+
+        // Obtención de JID del objetivo (Por citación, por mención @, o por texto/número)
+        let targetJid = null
+
+        if (m.quoted) {
+            targetJid = m.quoted.sender || m.quoted.participant || m.quoted.key?.participant
+        } else if (mentions.length > 0) {
+            targetJid = mentions[0]
+        } else if (args[0]) {
+            const cleanNum = extractPureNumber(args[0])
+            if (cleanNum && cleanNum.length >= 8) {
+                targetJid = `${cleanNum}@s.whatsapp.net`
+            }
         }
 
-        const targetUser = getUser(targetJid)
+        if (!targetJid) {
+            return m.reply('⚠️ Debes etiquetar a un usuario con `@`, responder a su mensaje o escribir su número.\n\nEjemplo: `.bancmd @usuario`')
+        }
+
+        // Asegurar formato JID correcto
+        if (!targetJid.includes('@')) {
+            targetJid = `${targetJid}@s.whatsapp.net`
+        }
+
+        const targetUser = getUser(targetJid) || {}
         const isBlockCommand = ['bancmd', 'blockuser'].includes(command)
 
         if (isBlockCommand) {
             if (targetUser.banned) {
-                return m.reply('⚠️ Este usuario ya se encuentra bloqueado.')
+                return m.reply(`⚠️ El usuario @${targetJid.split('@')[0]} ya se encuentra bloqueado.`, {
+                    mentions: [targetJid]
+                })
             }
 
             updateUser(targetJid, { banned: true })
-            return m.reply(`🚫 El usuario @${targetJid.split('@')[0]} ha sido *bloqueado* y no podrá usar ningún comando.`)
+            return conn.sendMessage(m.chat, {
+                text: `🚫 El usuario @${targetJid.split('@')[0]} ha sido *bloqueado* y no podrá usar ningún comando.`,
+                mentions: [targetJid]
+            }, { quoted: m })
+
         } else {
             if (!targetUser.banned) {
-                return m.reply('⚠️ Este usuario no está bloqueado.')
+                return m.reply(`⚠️ El usuario @${targetJid.split('@')[0]} no está bloqueado.`, {
+                    mentions: [targetJid]
+                })
             }
 
             updateUser(targetJid, { banned: false })
-            return m.reply(`✅ El usuario @${targetJid.split('@')[0]} ha sido *desbloqueado* y ya puede usar comandos nuevamente.`)
+            return conn.sendMessage(m.chat, {
+                text: `✅ El usuario @${targetJid.split('@')[0]} ha sido *desbloqueado* y ya puede usar comandos nuevamente.`,
+                mentions: [targetJid]
+            }, { quoted: m })
         }
     }
 }
