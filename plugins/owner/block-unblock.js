@@ -20,7 +20,7 @@ function extractPureNumber(target) {
 export default {
     command: ['bancmd', 'unbancmd', 'blockuser', 'unblockuser'],
 
-    async run(m, { args, command }) {
+    async run(m, { conn, args, command }) {
         const senderJid = m?.sender || m?.key?.participant || m?.key?.remoteJid || ''
         const senderNum = extractPureNumber(senderJid)
 
