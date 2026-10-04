@@ -8,7 +8,7 @@ De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
 ʚĭɞ ೃ codigo :: handler.js
-ʚĭɞ ೃ funcion :: obtencion de plugins, manejo de before() y comandos
+ʚĭɞ ೃ funcion :: obtencion de plugins, manejo de before(), baneo y comandos
 ──────✧✦✧──────
 */
 
@@ -16,6 +16,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 import config from './config.js'
+import { getUser } from './lib/database.js' // Importación de la base de datos
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -210,7 +211,13 @@ export default async function handler(conn, message) {
         used.usedPrefix = usedPrefix
         used.prefix = prefix
 
-        // 2. EJECUCIÓN DE COMANDOS REGULARES
+        // 2. VERIFICACIÓN DE USUARIO BANEADO / BLOQUEADO
+        const user = getUser(m.sender)
+        if (user && user.banned) {
+            return m.reply('🚫 *USUARIO BLOQUEADO*\n\nHas sido baneado y no tienes permitido usar ningún comando en este bot.')
+        }
+
+        // 3. EJECUCIÓN DE COMANDOS REGULARES
         for (const [, plugin] of Object.entries(global.plugins)) {
             if (!plugin || plugin.disabled || !plugin.command) continue
 
