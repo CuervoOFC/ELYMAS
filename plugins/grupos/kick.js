@@ -7,8 +7,8 @@ Clonar O Copiar Dejar Estos Creditos
 De Cuervo-Team-Supreme
 ━━━━━ ☾☽ ━━━━━
 ʚĭɞ ೃ CODIGO JAVASCRIPT ʚĭɞ ೃ
-ʚĭɞ r codigo :: plugins/grupos/kick.js
-ʚĭɞ ೃ funcion :: elimina a un usuario resolviendo su JID/LID/PN
+ʚĭɞ ೃ codigo :: plugins/grupos/kick.js
+ʚĭɞ ೃ funcion :: elimina a un usuario resolviendo su JID/LID/PN (Exclusivo Admins)
 ──────✧✦✧──────
 */
 
@@ -59,6 +59,14 @@ export default {
     async run(m, { conn, args }) {
         if (!m.isGroup) {
             return m.reply('⚠️ Este comando solo se puede usar en grupos.')
+        }
+
+        // Verificación de que el usuario que ejecuta el comando sea Admin
+        const groupMetadata = await conn.groupMetadata(m.chat)
+        const senderAdmin = groupMetadata.participants.find(p => p.id.includes(m.sender.split('@')[0]))?.admin
+
+        if (!senderAdmin) {
+            return m.reply('🚫 Solo los *Administradores* del grupo pueden usar este comando.')
         }
 
         let targetRaw = null
